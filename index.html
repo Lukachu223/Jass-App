@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chratze – Schweizer Jass</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1923; --surface: #1a2535; --surface2: #212f42;
+  --border: rgba(255,255,255,0.08);
+  --gold: #e2b84a; --gold-d: #a07a1e; --gold-l: #f0d080;
+  --text: #e8e0d0; --text-d: #8a9ab0;
+  --red: #e05050; --green: #3dba7a;
+  --felt: #1a3d28; --felt-l: #1f4d32; --felt-rim: #0d2018;
+}
+body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow:hidden; user-select:none; }
+
+/* TOP BAR */
+#topbar { position:fixed; top:0; left:0; right:0; height:50px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 18px; z-index:10; }
+.logo { font-size:1.15rem; font-weight:800; color:var(--gold); letter-spacing:1px; }
+#round-tag { font-size:0.68rem; color:var(--text-d); margin-top:2px; }
+.pot-box { text-align:right; padding-top:6px; }
+.pot-label { font-size:0.55rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-d); }
+.pot-val { font-size:1.3rem; font-weight:700; color:var(--gold-l); line-height:1.1; }
+#pot-breakdown { font-size:0.56rem; color:var(--text-d); }
+
+/* SCORES BAR */
+#scores { position:fixed; top:50px; left:0; right:0; display:flex; gap:4px; justify-content:center; flex-wrap:wrap; padding:4px 10px; background:var(--surface); border-bottom:1px solid var(--border); z-index:10; }
+.sc { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; padding:3px 10px; text-align:center; min-width:70px; }
+.sc-name { font-size:0.6rem; font-weight:700; color:var(--gold); }
+.sc-val { font-size:0.88rem; font-weight:700; }
+.sc-val.pos{color:var(--green);} .sc-val.neg{color:var(--red);} .sc-val.zero{color:var(--text-d);}
+.sc-tricks { font-size:0.53rem; color:var(--text-d); }
+
+/* TABLE SCENE */
+#scene { position:fixed; top:90px; left:0; right:0; bottom:180px; overflow:hidden; }
+#table-wrap { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:min(520px,72vw); height:min(520px,72vw); }
+#table-circle { width:100%; height:100%; border-radius:50%; background:radial-gradient(circle at 35% 35%, var(--felt-l), var(--felt) 55%, var(--felt-rim)); border:7px solid #081510; box-shadow:0 0 0 3px #1a3828, 0 0 0 8px #081510, 0 24px 80px rgba(0,0,0,0.75), inset 0 2px 12px rgba(255,255,255,0.03); position:relative; }
+
+/* Trump + Pot outside table */
+#trump-panel { display:none; }
+#pot-on-table { display:none; }
+
+/* INFO PANEL rechts */
+#info-panel {
+  position:fixed; top:96px; right:0; width:150px;
+  background:var(--surface); border:1px solid var(--border);
+  border-right:none; border-radius:10px 0 0 10px;
+  padding:10px 12px; z-index:8; font-size:0.65rem; color:var(--text-d);
+  display:flex; flex-direction:column; gap:8px;
+}
+.ip-section { display:flex; flex-direction:column; gap:2px; }
+.ip-label { font-size:0.5rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-d); opacity:0.6; }
+.ip-val { font-size:0.85rem; font-weight:700; color:var(--gold-l); }
+.ip-sub { font-size:0.58rem; color:var(--text-d); line-height:1.6; }
+.ip-divider { border:none; border-top:1px solid var(--border); margin:2px 0; }
+
+/* Trick center */
+#trick-area { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); display:flex; flex-wrap:wrap; gap:4px; justify-content:center; align-items:center; width:190px; }
+#trick-winner { position:absolute; bottom:-22px; left:50%; transform:translateX(-50%); font-size:0.62rem; font-weight:700; color:var(--gold-l); white-space:nowrap; text-shadow:0 1px 4px rgba(0,0,0,0.9); }
+
+/* SEATS around table */
+.seat { position:absolute; display:flex; flex-direction:column; align-items:center; gap:3px; transform:translate(-50%,-50%); transition:filter 0.3s; }
+.seat.active { filter:drop-shadow(0 0 10px var(--gold)); }
+.seat.out { opacity:0.32; }
+.seat-label { font-size:0.62rem; font-weight:700; background:rgba(8,18,28,0.82); border:1px solid rgba(255,255,255,0.1); border-radius:20px; padding:2px 9px; color:var(--text); white-space:nowrap; display:flex; align-items:center; gap:4px; }
+.seat-label.active-lbl { border-color:var(--gold); color:var(--gold-l); }
+.seat-cards { display:flex; gap:2px; }
+.seat-info { font-size:0.53rem; color:var(--text-d); }
+
+/* PLAYER HAND */
+#hand-area { position:fixed; bottom:130px; left:0; right:0; display:flex; align-items:flex-end; justify-content:center; gap:6px; padding:0 12px; height:116px; pointer-events:none; }
+.cw { display:inline-block; cursor:pointer; transition:transform 0.18s cubic-bezier(.34,1.56,.64,1); transform-origin:bottom center; pointer-events:all; }
+.cw:hover { transform:translateY(-16px) scale(1.05); }
+.cw.sel { transform:translateY(-22px) scale(1.07); filter:drop-shadow(0 0 8px rgba(226,184,74,0.8)); }
+.cw.bad { opacity:0.3; cursor:not-allowed; } .cw.bad:hover { transform:none; }
+
+/* FLYING CARD */
+#card-flyer { position:fixed; pointer-events:none; z-index:50; display:none; }
+#card-flyer.flying { transition:left 0.65s cubic-bezier(0.25,0.46,0.45,0.94), top 0.65s cubic-bezier(0.25,0.46,0.45,0.94), transform 0.65s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.65s; }
+
+/* ACTION BAR */
+#action-bar { position:fixed; bottom:0; left:0; right:0; display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 16px 10px; z-index:10; pointer-events:none; }
+#action-msg { font-size:0.82rem; color:var(--text); line-height:1.4; text-align:center; background:rgba(8,18,28,0.72); border-radius:8px; padding:4px 14px; backdrop-filter:blur(4px); pointer-events:none; }
+#action-msg strong{color:var(--gold-l);font-weight:700;} #action-msg em{color:var(--text-d);font-style:normal;}
+#btns { display:flex; gap:7px; flex-wrap:wrap; justify-content:center; pointer-events:all; }
+
+/* LOG */
+#log { position:fixed; left:10px; bottom:10px; width:200px; background:rgba(8,18,28,0.78); border-radius:8px; padding:5px 10px; font-size:0.6rem; color:var(--text-d); max-height:68px; overflow-y:auto; line-height:1.65; z-index:5; }
+#stock-info { position:fixed; right:10px; bottom:10px; font-size:0.58rem; color:var(--text-d); z-index:5; }
+
+/* BUTTONS */
+.btn { font-family:inherit; font-size:0.8rem; font-weight:600; padding:7px 17px; border-radius:8px; border:none; cursor:pointer; transition:transform 0.1s,filter 0.1s; }
+.btn:hover{transform:translateY(-1px);filter:brightness(1.1);} .btn:active{transform:translateY(0);}
+.btn:disabled{opacity:0.3;cursor:not-allowed;transform:none;}
+.btn-gold{background:linear-gradient(135deg,#e2b84a,#a07a1e);color:#0f1000;}
+.btn-red{background:linear-gradient(135deg,#e05050,#8a1a1a);color:#fff;}
+.btn-gray{background:rgba(255,255,255,0.07);color:var(--text);border:1px solid var(--border);}
+.btn-green{background:linear-gradient(135deg,#3dba7a,#1a7a46);color:#fff;}
+
+/* BADGES */
+.badge{display:inline-block;font-size:0.53rem;padding:1px 5px;border-radius:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;}
+.b-g{background:#7a1212;color:#fff;} .b-c{background:var(--gold);color:#0f1000;} .b-d{background:var(--green);color:#fff;} .b-w{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.32);}
+
+/* MODAL */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+#overlay.show{display:flex;}
+#modal{background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:26px 26px;max-width:460px;width:92%;box-shadow:0 24px 80px rgba(0,0,0,0.85);}
+#modal h2{color:var(--gold);font-size:1.25rem;font-weight:800;margin-bottom:12px;text-align:center;}
+#modal p{color:var(--text);line-height:1.65;font-size:0.84rem;margin-bottom:16px;}
+#modal-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div><div class="logo">&#9827; Chratze</div><div id="round-tag">–</div></div>
+  <div class="pot-box"><div class="pot-label">Pot</div><div class="pot-val" id="pot-val">Fr. 0.00</div></div>
+</div>
+<div id="scores"></div>
+
+<div id="scene">
+  <div id="table-wrap">
+    <div id="table-circle">
+      <div id="trick-area"><div id="trick-winner"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="info-panel">
+  <div class="ip-section">
+    <div class="ip-label">Trumpf</div>
+    <div class="ip-val" id="ip-trump-suit">–</div>
+    <div id="ip-trump-card" style="margin-top:3px;"></div>
+    <div class="ip-sub" id="ip-trump-idx"></div>
+  </div>
+  <hr class="ip-divider">
+  <div class="ip-section">
+    <div class="ip-label">Pot Verteilung</div>
+    <div class="ip-sub" id="ip-pot-breakdown">–</div>
+  </div>
+  <hr class="ip-divider">
+  <div class="ip-section">
+    <div class="ip-label">Stock</div>
+    <div class="ip-sub" id="ip-stock">–</div>
+  </div>
+</div>
+
+<div id="hand-area"></div>
+<div id="card-flyer"></div>
+<div id="action-bar"><div id="action-msg">Bereit.</div><div id="btns"></div></div>
+<div id="log"></div>
+<div id="overlay"><div id="modal"><h2 id="modal-title"></h2><p id="modal-body"></p><div id="modal-btns"></div></div></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  SCHWEIZER JASSKARTEN – Echte GIF-Bilder aus cards/ Ordner
+// ═══════════════════════════════════════════════════════════════
+var SUITS = [
+  { name:'Eicheln',  prefix:'eichel'   },
+  { name:'Schellen', prefix:'schellen' },
+  { name:'Rosen',    prefix:'rosen'    },
+  { name:'Schilten', prefix:'schilten' }
+];
+var RANKS      = ['A','K','O','U','10','9','8','7','6'];
+var RNAMES     = ['Ass','König','Ober','Under','Banner','9','8','7','6'];
+var RANK_FILES = ['ass','koenig','ober','under','banner','neun','acht','sieben','sechs'];
+
+// Preload all 36 card images
+var _imgCache = {};
+(function(){
+  for(var s=0;s<4;s++) for(var r=0;r<9;r++){
+    var key=s+'_'+r, img=new Image();
+    img.src='cards/'+SUITS[s].prefix+'-'+RANK_FILES[r]+'.gif';
+    _imgCache[key]=img;
+  }
+})();
+
+function backSVG(W,H){
+  var uid='bk'+W+'x'+H;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">'
+    +'<defs><pattern id="bp'+uid+'" width="10" height="10" patternUnits="userSpaceOnUse">'
+    +'<rect width="10" height="10" fill="#1a2a5e"/>'
+    +'<path d="M0,5 L5,0 L10,5 L5,10 Z" fill="none" stroke="#2a4080" stroke-width="0.8"/>'
+    +'<circle cx="5" cy="5" r="1.5" fill="#2244a0" opacity="0.6"/>'
+    +'</pattern></defs>'
+    +'<rect x="0.5" y="0.5" width="'+(W-1)+'" height="'+(H-1)+'" rx="6" fill="#0e1a48" stroke="#060e28" stroke-width="1.5"/>'
+    +'<rect x="3" y="3" width="'+(W-6)+'" height="'+(H-6)+'" rx="4" fill="url(#bp'+uid+')"/>'
+    +'<rect x="5" y="5" width="'+(W-10)+'" height="'+(H-10)+'" rx="3" fill="none" stroke="#c8a84b" stroke-width="1.4"/>'
+    +'<text x="'+(W/2)+'" y="'+(H/2+5)+'" text-anchor="middle" font-family="Georgia,serif" font-size="'+(W*.22)+'" fill="#c8a84b" opacity="0.55">&#9670;</text>'
+    +'</svg>';
+}
+var _backCache={};
+function makeBack(w,h){
+  var key='bk_'+w+'_'+h;
+  if(!_backCache[key]){
+    var div=document.createElement('div');div.innerHTML=backSVG(w,h);
+    _backCache[key]=div.innerHTML;
+  }
+  var d2=document.createElement('div');d2.innerHTML=_backCache[key];
+  var el=d2.firstElementChild;
+  el.style.borderRadius='5px';el.style.display='block';
+  return el;
+}
+function makeCard(suit,rank,w,h){
+  var wrap=document.createElement('div');
+  wrap.style.cssText='width:'+w+'px;height:'+h+'px;border-radius:5px;overflow:hidden;box-shadow:2px 3px 8px rgba(0,0,0,0.55);display:block;flex-shrink:0;background:#fff;';
+  var img=document.createElement('img');
+  img.src='cards/'+SUITS[suit].prefix+'-'+RANK_FILES[rank]+'.gif';
+  img.style.cssText='width:'+w+'px;height:'+h+'px;display:block;object-fit:fill;';
+  img.alt=RNAMES[rank]+' '+SUITS[suit].name;
+  wrap.appendChild(img);
+  return wrap;
+}
+</script>
+
+<script>
+// ═══════════════════════════════════════════════
+//  SPIELLOGIK – Chratze Jass
+// ═══════════════════════════════════════════════
+var EINSATZ = 0.20;
+var N = 5;
+var CW=72,CH=104, CWS=38,CHS=55, CS=38,HS=55, CT=54,HT=78;
+var G = {};
+
+function makeDeck(){var d=[];for(var s=0;s<4;s++)for(var r=0;r<9;r++)d.push({suit:s,rank:r});return d;}
+function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=0|Math.random()*(i+1);var t=b[i];b[i]=b[j];b[j]=t;}return b;}
+function cn(c){return RNAMES[c.rank]+' '+SUITS[c.suit].name;}
+function beats(ch,cu,led,tr){
+  if(ch.suit===tr&&cu.suit!==tr)return true;
+  if(ch.suit!==tr&&cu.suit===tr)return false;
+  if(ch.suit===cu.suit)return ch.rank<cu.rank;
+  return false;
+}
+function evalC(c,tr){var v=(8-c.rank)/8;if(c.suit===tr)return v*2+1;if(c.rank===0)return 1.3;return v*0.6;}
+function evalH(h,tr){var s=0;for(var i=0;i<h.length;i++)s+=evalC(h[i],tr);return s;}
+
+var logLines=[];
+function addLog(m){
+  logLines.push(m);if(logLines.length>40)logLines.shift();
+  var el=document.getElementById('log');
+  el.innerHTML=logLines.slice(-6).join('<br>');
+  el.scrollTop=el.scrollHeight;
+}
+function setMsg(h){document.getElementById('action-msg').innerHTML=h;}
+function setBtns(list){
+  var el=document.getElementById('btns');el.innerHTML='';
+  list.forEach(function(b){
+    var btn=document.createElement('button');
+    btn.className='btn btn-'+(b.style||'gray');
+    btn.innerHTML=b.label;
+    if(b.disabled)btn.disabled=true;
+    btn.onclick=b.fn;
+    el.appendChild(btn);
+  });
+}
+function showModal(title,bodyHtml,buttons){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=bodyHtml;
+  var el=document.getElementById('modal-btns');el.innerHTML='';
+  buttons.forEach(function(b){
+    var btn=document.createElement('button');
+    btn.className='btn btn-'+(b.style||'gray');
+    btn.innerHTML=b.label;
+    btn.onclick=(function(fn){return function(){hideModal();fn();};})(b.fn);
+    el.appendChild(btn);
+  });
+  document.getElementById('overlay').classList.add('show');
+}
+function hideModal(){document.getElementById('overlay').classList.remove('show');}
+function bdg(status,isG,isC){
+  var h='';
+  if(isG)h+=' <span class="badge b-g">Geber</span>';
+  if(isC||status==='chratzer')h+=' <span class="badge b-c">AUF!</span>';
+  else if(status==='dabei')h+=' <span class="badge b-d">Dabei</span>';
+  else if(status==='weg')h+=' <span class="badge b-w">Weg</span>';
+  return h;
+}
+
+// ── Sitzposition berechnen ────────────────────────────────
+// Spieler 0 = lokaler Spieler, sitzt unten (hand-area), wird NICHT auf dem Tisch gerendert.
+// CPU-Spieler (Index 1..N-1) werden auf dem Tischrand verteilt.
+// Positionen als {x, y} in % des table-circle (0,0 = oben-links, 50,50 = Mitte).
+// Der untere Bereich (~210°–330°) bleibt frei damit nichts die hand-area verdeckt.
+//
+// Vordefinierte Positionen pro Spieleranzahl:
+//   N=3: 2 CPU  → links + rechts oben
+//   N=4: 3 CPU  → links, oben-mitte, rechts
+//   N=5: 4 CPU  → links-oben, oben-links, oben-rechts, rechts-oben
+//   N=6: 5 CPU  → links, oben-links, oben, oben-rechts, rechts
+//
+// Radius ~47% damit die Seat-Labels nicht abgeschnitten werden.
+var SEAT_POSITIONS = {
+  3: [
+    null,          // Spieler 0 = ich (hand-area)
+    { x: 16, y: 42 },  // links
+    { x: 84, y: 42 }   // rechts
+  ],
+  4: [
+    null,
+    { x: 14, y: 50 },  // links Mitte
+    { x: 50, y:  8 },  // oben Mitte
+    { x: 86, y: 50 }   // rechts Mitte
+  ],
+  5: [
+    null,
+    { x: 12, y: 68 },  // links-unten (aber über hand-area)
+    { x: 18, y: 22 },  // links-oben
+    { x: 82, y: 22 },  // rechts-oben
+    { x: 88, y: 68 }   // rechts-unten
+  ],
+  6: [
+    null,
+    { x: 12, y: 68 },  // links-unten
+    { x: 12, y: 28 },  // links-oben
+    { x: 50, y:  8 },  // oben Mitte
+    { x: 88, y: 28 },  // rechts-oben
+    { x: 88, y: 68 }   // rechts-unten
+  ]
+};
+
+function seatPos(playerIdx) {
+  var positions = SEAT_POSITIONS[N];
+  if (positions && positions[playerIdx]) return positions[playerIdx];
+  // Fallback: gleichmässig auf oberem Halbkreis (90° ± 80°)
+  var steps = N - 1;
+  var t = steps <= 1 ? 0.5 : (playerIdx - 1) / (steps - 1);
+  var angle = (200 + t * 140) % 360; // 200° bis 340°, also linke+obere+rechte Seite
+  var rad = angle * Math.PI / 180;
+  return { x: 50 + 44 * Math.cos(rad), y: 50 + 44 * Math.sin(rad) };
+}
+
+function render(){
+  document.getElementById('round-tag').textContent = 'Runde ' + G.round + ' \u00b7 ' + G.players[G.geber].name + ' gibt \u00b7 Fr. ' + EINSATZ.toFixed(2);
+
+  // Pot (topbar only – gross, kein Breakdown)
+  var potTxt = 'Fr. ' + G.pot.toFixed(2);
+  document.getElementById('pot-val').textContent = potTxt;
+
+  // Pot breakdown → Info Panel
+  var pbLines = [];
+  if (G.potContrib) {
+    for (var pi2 = 0; pi2 < G.players.length; pi2++) {
+      var amt = G.potContrib[pi2] || 0;
+      if (amt > 0) pbLines.push(G.players[pi2].name + ': Fr. ' + amt.toFixed(2));
+    }
+  }
+  document.getElementById('ip-pot-breakdown').innerHTML = pbLines.length ? pbLines.join('<br>') : '–';
+
+  // Scores
+  var se = document.getElementById('scores');
+  se.innerHTML = G.players.map(function(p, i) {
+    var cls = p.balance > 0 ? 'pos' : p.balance < 0 ? 'neg' : 'zero';
+    return '<div class="sc"><div class="sc-name">' + p.name + (i===G.geber?' \u2295':'') + '</div>'
+      + '<div class="sc-val ' + cls + '">' + (p.balance>=0?'+':'') + p.balance.toFixed(2) + '</div>'
+      + '<div class="sc-tricks">Stiche: ' + p.tricks + '</div></div>';
+  }).join('');
+
+  // Seats – remove old, re-render all players around table
+  var circle = document.getElementById('table-circle');
+  // Remove old seats
+  var oldSeats = circle.querySelectorAll('.seat');
+  for (var s = 0; s < oldSeats.length; s++) circle.removeChild(oldSeats[s]);
+
+  for (var pi = 0; pi < N; pi++) {
+    if (pi === 0) continue; // Human player drawn separately in hand-area
+    var p = G.players[pi];
+    var pos = seatPos(pi);
+    var isAct = (G.phase==='ansage'&&G.ansageOrder[G.ansagePtr]===pi)
+      || (G.phase==='metcho'&&G.ansageOrder[G.ansagePtr]===pi)
+      || (G.phase==='tausch'&&G.swapOrder[G.swapPtr]===pi)
+      || (G.phase==='play'&&G.playOrder[G.playPtr]===pi);
+
+    var seat = document.createElement('div');
+    seat.className = 'seat' + (p.status==='weg'?' out':'') + (isAct?' active':'');
+    seat.style.left = pos.x + '%';
+    seat.style.top  = pos.y + '%';
+
+    var lbl = document.createElement('div');
+    lbl.className = 'seat-label' + (isAct?' active-lbl':'');
+    lbl.innerHTML = p.name + bdg(p.status, pi===G.geber, pi===G.chratzer);
+
+    var cards = document.createElement('div');
+    cards.className = 'seat-cards';
+    var showCards = Math.min(p.hand.length, 6);
+    for (var k = 0; k < showCards; k++) cards.appendChild(makeBack(CWS, CHS));
+
+    var info = document.createElement('div');
+    info.className = 'seat-info';
+    info.textContent = p.hand.length + ' Karten \u00b7 ' + p.tricks + ' Stiche';
+
+    seat.appendChild(lbl);
+    seat.appendChild(cards);
+    seat.appendChild(info);
+    circle.appendChild(seat);
+  }
+
+  // Trump → Info Panel
+  if (G.trump === -1) {
+    document.getElementById('ip-trump-suit').textContent = '\u2014';
+    document.getElementById('ip-trump-card').innerHTML = '';
+    document.getElementById('ip-trump-idx').textContent = '';
+  } else {
+    document.getElementById('ip-trump-suit').textContent = SUITS[G.trump].name;
+    var w = document.getElementById('ip-trump-card');
+    w.innerHTML = '';
+    if (G.trumpCard) w.appendChild(makeCard(G.trumpCard.suit, G.trumpCard.rank, CWS, CHS));
+    document.getElementById('ip-trump-idx').textContent = 'Karte ' + G.trumpCardIdx + ' / 3';
+  }
+
+  // Stock → Info Panel
+  document.getElementById('ip-stock').textContent = G.stock.length > 0 ? G.stock.length + ' Karten' : 'leer';
+
+  // Trick cards (static, no animation – animation is in playCard)
+  var ta = document.getElementById('trick-area');
+  // Keep trick-winner, replace cards
+  var tw = document.getElementById('trick-winner');
+  ta.innerHTML = '';
+  ta.appendChild(tw);
+  G.trick.forEach(function(e) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;';
+    var lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:0.55rem;color:rgba(255,255,255,0.5);text-align:center;';
+    lbl.textContent = G.players[e.pidx].name;
+    var img = makeCard(e.card.suit, e.card.rank, CT, HT);
+    wrap.appendChild(lbl);
+    wrap.appendChild(img);
+    ta.appendChild(wrap);
+  });
+
+  renderHand();
+}
+
+function renderHand(){
+  var p = G.players[0];
+  var el = document.getElementById('hand-area');
+  el.innerHTML = '';
+  var isPlay = G.phase==='play' && G.playOrder[G.playPtr]===0;
+  var isSwap = G.phase==='tausch' && G.swapOrder[G.swapPtr]===0;
+  p.hand.forEach(function(card, idx){
+    var wrap = document.createElement('div');
+    wrap.className = 'cw' + (G.selCards[idx] ? ' sel' : '');
+    wrap.setAttribute('data-idx', idx);
+    wrap.appendChild(makeCard(card.suit, card.rank, CW, CH));
+    if (isPlay) {
+      if (!isLegal(card, p.hand, G.trump)) wrap.classList.add('bad');
+      else { (function(i){ wrap.onclick = function(){ playCard(i); }; })(idx); }
+    } else if (isSwap) {
+      (function(i){ wrap.onclick = function(){ toggleSel(i); }; })(idx);
+    }
+    el.appendChild(wrap);
+  });
+}
+
+// ── Flying card animation ─────────────────────────────────
+// cardEl: card object {suit,rank} OR DOM element; fromEl: source DOM element
+function flyCardToTable(cardEl, fromEl, callback) {
+  // Get position of the source element
+  var fromRect = fromEl.getBoundingClientRect();
+  // Get center of trick area
+  var ta = document.getElementById('trick-area');
+  var taRect = ta.getBoundingClientRect();
+
+  var flyer = document.getElementById('card-flyer');
+  flyer.innerHTML = '';
+  var clone;
+  // If cardEl is a card object {suit,rank}, render the actual card face
+  if (cardEl && typeof cardEl === 'object' && 'suit' in cardEl && 'rank' in cardEl) {
+    clone = makeCard(cardEl.suit, cardEl.rank, CW, CH);
+  } else {
+    // Fall back to cloning from DOM
+    var inner = fromEl.querySelector('img, svg, div');
+    clone = inner ? inner.cloneNode(true) : fromEl.cloneNode(true);
+  }
+  clone.style.cssText = 'width:' + CW + 'px;height:' + CH + 'px;border-radius:5px;box-shadow:4px 6px 16px rgba(0,0,0,0.7);display:block;';
+  flyer.appendChild(clone);
+
+  // Start position
+  flyer.style.display = 'block';
+  flyer.style.transition = 'none';
+  flyer.style.left = fromRect.left + 'px';
+  flyer.style.top  = fromRect.top  + 'px';
+  flyer.style.transform = 'scale(1)';
+  flyer.style.opacity = '1';
+
+  // Target: center of trick area
+  var tx = taRect.left + taRect.width/2  - CW/2;
+  var ty = taRect.top  + taRect.height/2 - CH/2;
+
+  // Trigger animation
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      flyer.classList.add('flying');
+      flyer.style.left = tx + 'px';
+      flyer.style.top  = ty + 'px';
+      flyer.style.transform = 'scale(0.88)';
+      setTimeout(function(){
+        flyer.style.display = 'none';
+        flyer.classList.remove('flying');
+        callback();
+      }, 680);
+    });
+  });
+}
+function toggleSel(idx){
+  G.selCards[idx]=!G.selCards[idx];
+  var count=Object.keys(G.selCards).filter(function(k){return G.selCards[k];}).length;
+  renderHand();
+  var btn=document.querySelector('#btns .btn-gold');
+  if(btn)btn.textContent='\uD83D\uDD04 Tauschen ('+count+')';
+}
+function selIndices(){return Object.keys(G.selCards).filter(function(k){return G.selCards[k];}).map(Number);}
+
+// ── Einsatz-Dialog ────────────────────────────────────────
+// ── Setup-Dialog: Spielerzahl + Grundeinsatz ───────────────
+function showSetupDialog(callback) {
+  document.getElementById('modal-title').textContent = 'Spiel einrichten';
+  document.getElementById('modal-body').innerHTML =
+    '<div style="font-family:Arial;font-size:0.9rem;line-height:2;">'
+    +'<div style="margin-bottom:10px;">'
+    +'<label style="color:#c9a84c;font-weight:700;">Anzahl Spieler:</label><br>'
+    +'<div id="n-btns" style="display:flex;gap:8px;margin-top:6px;">'
+    +'<button class="btn btn-gray n-btn" data-n="3">3</button>'
+    +'<button class="btn btn-gray n-btn" data-n="4">4</button>'
+    +'<button class="btn btn-gold n-btn" data-n="5">5</button>'
+    +'<button class="btn btn-gray n-btn" data-n="6">6</button>'
+    +'</div></div>'
+    +'<div style="margin-top:14px;">'
+    +'<label style="color:#c9a84c;font-weight:700;">Grundeinsatz pro Spieler:</label><br>'
+    +'<div style="margin-top:6px;">'
+    +'<span style="color:#c9a84c;">Fr. </span>'
+    +'<input id="einsatz-input" type="number" min="0.05" max="10" step="0.05" value="'+EINSATZ.toFixed(2)+'" '
+    +'style="width:80px;font-size:1.1rem;padding:5px 8px;border:2px solid #c9a84c;border-radius:8px;'
+    +'background:#0b2415;color:#e8cc7a;text-align:center;font-family:Georgia,serif;"/>'
+    +'<span style="color:#c9a84c;margin-left:4px;">/ Spieler</span>'
+    +'</div>'
+    +'<div style="font-size:0.72rem;color:#c4b99a;margin-top:5px;">Total: Fr. <span id="total-display">'+(EINSATZ*N).toFixed(2)+'</span> pro Runde</div>'
+    +'</div></div>';
+
+  var el = document.getElementById('modal-btns'); el.innerHTML='';
+  var selectedN = N;
+
+  setTimeout(function(){
+    // Spielerzahl-Buttons
+    var nBtns = document.querySelectorAll('.n-btn');
+    nBtns.forEach(function(btn){
+      btn.onclick = function(){
+        selectedN = parseInt(btn.getAttribute('data-n'));
+        nBtns.forEach(function(b){ b.className='btn btn-gray n-btn'; });
+        btn.className = 'btn btn-gold n-btn';
+        var v = parseFloat(document.getElementById('einsatz-input').value)||EINSATZ;
+        document.getElementById('total-display').textContent = (v*selectedN).toFixed(2);
+      };
+    });
+    // Einsatz-Input
+    var inp = document.getElementById('einsatz-input');
+    if(inp) inp.oninput = function(){
+      var v = parseFloat(inp.value)||0;
+      document.getElementById('total-display').textContent = (v*selectedN).toFixed(2);
+    };
+  }, 50);
+
+  var startBtn = document.createElement('button');
+  startBtn.className = 'btn btn-gold';
+  startBtn.textContent = 'Spiel starten';
+  startBtn.onclick = function(){
+    var inp = document.getElementById('einsatz-input');
+    var val = parseFloat(inp ? inp.value : EINSATZ);
+    if(isNaN(val)||val<0.05) val=0.05;
+    if(val>10) val=10;
+    val = Math.round(val/0.05)*0.05;
+    EINSATZ = +val.toFixed(2);
+    N = selectedN;
+    hideModal();
+    callback();
+  };
+  el.appendChild(startBtn);
+  document.getElementById('overlay').classList.add('show');
+}
+
+// ── Game flow ──────────────────────────────────────────────
+function startGame(){
+  G={phase:'start',round:0,
+    players:[],geber:0|Math.random()*N,
+    chratzer:-1,trump:-1,trumpCard:null,trumpCardIdx:1,
+    potStart:0,pot:0,potContrib:{},
+    stock:[],trick:[],
+    ansageOrder:[],ansagePtr:0,
+    playOrder:[],playPtr:0,
+    swapOrder:[],swapPtr:0,
+    selCards:{},
+    needsEinsatz:true,
+    tricksTotal:0
+  };
+  for(var i=0;i<N;i++)G.players.push({name:i===0?'Du':'CPU '+i,hand:[],tricks:0,status:'none',balance:0,isHuman:i===0});
+  addLog('\uD83C\uDCF4 AUF! '+N+' Spieler, Einsatz Fr. '+EINSATZ.toFixed(2));
+  startRound();
+}
+
+function startRound(){
+  G.round++;G.chratzer=-1;G.trump=-1;G.trumpCard=null;G.trumpCardIdx=1;
+  G.trick=[];G.selCards={};G.tricksTotal=0;
+  G.players.forEach(function(p){p.hand=[];p.tricks=0;p.status='none';});
+
+  if(G.needsEinsatz){
+    G.pot=0;G.potContrib={};
+    G.players.forEach(function(p,i){
+      p.balance-=EINSATZ;
+      G.pot=+(G.pot+EINSATZ).toFixed(2);
+      G.potContrib[i]=(G.potContrib[i]||0)+EINSATZ;
+      G.potContrib[i]=+G.potContrib[i].toFixed(2);
+    });
+    addLog('\u2500\u2500 Runde '+G.round+' \u00b7 Grundeinsatz Fr. '+EINSATZ.toFixed(2)+' x'+N+' = Fr. '+G.pot.toFixed(2));
+  } else {
+    // Pot bleibt (von Verlierern aufgefüllt, potContrib schon gesetzt)
+    addLog('\u2500\u2500 Runde '+G.round+' \u00b7 Pot bleibt: Fr. '+G.pot.toFixed(2)+' (kein Grundeinsatz)');
+  }
+  G.potStart=G.pot;
+  dealCards();
+}
+
+function dealCards(){
+  G.players.forEach(function(p){p.hand=[];p.tricks=0;p.status='none';});
+  G.chratzer=-1;G.trick=[];G.selCards={};
+  var deck=shuffle(makeDeck()),idx=0;
+  for(var pass=0;pass<2;pass++)
+    for(var off=1;off<=N;off++)
+      G.players[(G.geber-off+N*100)%N].hand.push(deck[idx++]);
+  G.trumpCard=deck[idx++];G.trump=G.trumpCard.suit;G.trumpCardIdx=1;
+  for(var pass2=0;pass2<2;pass2++)
+    for(var off2=1;off2<=N;off2++)
+      G.players[(G.geber-off2+N*100)%N].hand.push(deck[idx++]);
+  G.stock=deck.slice(idx);
+  addLog('Trumpf: '+SUITS[G.trump].name+' ('+cn(G.trumpCard)+') \u00b7 Geber: '+G.players[G.geber].name);
+  render();startAnsage();
+}
+
+function startAnsage(){
+  G.phase='ansage';G.ansageOrder=[];
+  for(var i=1;i<=N;i++)G.ansageOrder.push((G.geber-i+N*100)%N);
+  G.ansagePtr=0;render();nextAnsage();
+}
+
+function nextAnsage(){
+  if(G.ansagePtr>=G.ansageOrder.length){
+    if(G.trumpCardIdx<3){revealNewTrump();return;}
+    // Nach 3 Trumpfkarten: alle zahlen Grundeinsatz, neu mischen
+    addLog('Niemand sagt AUF! \u2013 neu mischen! Alle zahlen Fr. '+EINSATZ.toFixed(2)+'.');
+    G.players.forEach(function(p){p.balance-=EINSATZ;G.pot+=EINSATZ;});
+    G.pot=+G.pot.toFixed(2);
+    G.potStart=G.pot;
+    showModal('Neu Mischen',
+      'Niemand hat AUF! gesagt bei 3 Trumpfkarten!<br>Alle zahlen nochmals Fr. '+EINSATZ.toFixed(2)+' ein.<br><br>Pot: <strong>Fr. '+G.pot.toFixed(2)+'</strong>',
+      [{label:'\uD83D\uDD04 Neu mischen',style:'gold',fn:dealCards}]);
+    return;
+  }
+  var pi=G.ansageOrder[G.ansagePtr];render();
+  if(G.players[pi].isHuman){
+    setMsg('<strong>Ansage:</strong> M\u00f6chtest du <em>AUF!</em> (2 Stiche) oder <em>wegbleiben</em>?');
+    setBtns([
+      {label:'\u26A1 AUF!',style:'gold',fn:function(){doChratze(0);}},
+      {label:'\uD83D\uDC4B Weg',style:'gray',fn:function(){doWeg(0);}}
+    ]);
+  } else {
+    setTimeout(function(){
+      if(evalH(G.players[pi].hand,G.trump)>1.6&&G.chratzer===-1)doChratze(pi);else doWeg(pi);
+    },700);
+  }
+}
+
+function doChratze(pi){
+  G.players[pi].status='chratzer';G.chratzer=pi;
+  addLog('\u26A1 '+G.players[pi].name+' AUF!');
+  // Alle nochmals fragen – inkl. wer vorher "weg" war (Regel 4)
+  G.phase='metcho';G.ansageOrder=[];
+  for(var i=1;i<N;i++)G.ansageOrder.push((G.chratzer-i+N*100)%N);
+  // Status aller "weg"-Spieler zurücksetzen damit sie nochmals gefragt werden
+  G.players.forEach(function(p,i){if(i!==pi&&p.status==='weg')p.status='none';});
+  G.ansagePtr=0;render();setTimeout(nextMetcho,400);
+}
+
+function doWeg(pi){
+  G.players[pi].status='weg';
+  addLog(G.players[pi].name+': Weg.');
+  G.ansagePtr++;render();setTimeout(nextAnsage,350);
+}
+
+function nextMetcho(){
+  if(G.ansagePtr>=G.ansageOrder.length){
+    var dabei=G.players.filter(function(p){return p.status==='dabei';});
+    if(dabei.length===0){
+      // Susi-Regel: letzter Spieler in der Metcho-Reihenfolge muss mit
+      var last=G.ansageOrder[G.ansageOrder.length-1];
+      if(G.players[last].isHuman){
+        addLog('Susi-Regel: Du musst mit!');
+        setMsg('<strong>Susi-Regel:</strong> Niemand kommt mit \u2013 du bist dran!');
+        setBtns([{label:'\uD83D\uDE05 Mit (Pflicht)',style:'green',fn:function(){doMetcho(0);}}]);
+        return;
+      } else {
+        addLog('Susi: '+G.players[last].name+' muss mit.');
+        G.players[last].status='dabei';render();setTimeout(startTausch,400);return;
+      }
+    }
+    render();setTimeout(startTausch,400);return;
+  }
+  var pi=G.ansageOrder[G.ansagePtr],p=G.players[pi];render();
+  // Status 'none' bedeutet: vorher weg, jetzt nochmals fragen (Regel 4)
+  if(p.isHuman&&(p.status==='none'||p.status==='dabei')){
+    var wasWeg=p.status==='none';
+    setMsg((wasWeg?'<em>Du warst weg – aber </em>':'')
+      +'<strong>'+G.players[G.chratzer].name+'</strong> sagt AUF! – Willst du <em>mit</em> (1 Stich) oder <em>weg</em>?');
+    setBtns([
+      {label:'\u2705 Mit!',style:'green',fn:function(){doMetcho(0);}},
+      {label:'\uD83D\uDC4B Weg',style:'gray',fn:function(){doWeg_m(0);}}
+    ]);
+  } else if(p.status==='weg'){
+    // Bereits definitiv weg (in Metcho-Phase gesetzt)
+    G.ansagePtr++;setTimeout(nextMetcho,100);
+  } else {
+    // CPU
+    setTimeout(function(){
+      if(p.status==='none'||p.status==='dabei'){
+        if(evalH(p.hand,G.trump)>0.9)doMetcho(pi);else doWeg_m(pi);
+      } else {
+        G.ansagePtr++;setTimeout(nextMetcho,100);
+      }
+    },650);
+  }
+}
+
+function doMetcho(pi){
+  G.players[pi].status='dabei';
+  addLog('\u2705 '+G.players[pi].name+' kommt mit.');
+  G.ansagePtr++;render();setTimeout(nextMetcho,350);
+}
+
+function doWeg_m(pi){
+  G.players[pi].status='weg';
+  addLog(G.players[pi].name+': Weg.');
+  G.ansagePtr++;render();setTimeout(nextMetcho,350);
+}
+
+function revealNewTrump(){
+  G.trumpCardIdx++;
+  if(!G.stock.length){addLog('Kein Stock \u2013 neu mischen!');dealCards();return;}
+  var nc=G.stock.shift();G.trumpCard=nc;G.trump=nc.suit;
+  // Alle Spieler wieder auf 'none' setzen für neue Ansage-Runde
+  G.players.forEach(function(p){p.status='none';});G.chratzer=-1;
+  addLog('Neue Trumpfkarte ('+G.trumpCardIdx+'/3): '+SUITS[G.trump].name+' ('+cn(nc)+')');
+  render();setTimeout(startAnsage,500);
+}
+
+function startTausch(){
+  G.phase='tausch';G.swapOrder=[G.chratzer];
+  for(var i=1;i<N;i++){var pi=(G.chratzer-i+N*100)%N;if(G.players[pi].status==='dabei')G.swapOrder.push(pi);}
+  G.swapPtr=0;G.selCards={};render();setTimeout(nextTausch,300);
+}
+
+function nextTausch(){
+  if(G.swapPtr>=G.swapOrder.length){render();setTimeout(startPlay,300);return;}
+  var pi=G.swapOrder[G.swapPtr];render();
+  if(G.players[pi].isHuman){
+    G.selCards={};renderHand();
+    setMsg('<strong>Kartentausch:</strong> Karten anklicken zum Markieren, dann Tauschen dr\u00fccken.<br><em>Alle 4 tauschen = 5 neue erhalten, 1 verdeckt ablegen.</em>');
+    setBtns([
+      {label:'\uD83D\uDD04 Tauschen (0)',style:'gold',fn:doHumanSwap},
+      {label:'\u25B6 Nicht tauschen',style:'gray',fn:function(){execSwap(0,[]);}}
+    ]);
+  } else {
+    setTimeout(function(){
+      var p=G.players[pi],td=[];
+      for(var i=0;i<p.hand.length;i++){if(p.hand[i].suit!==G.trump&&p.hand[i].rank!==0)td.push(i);}
+      execSwap(pi,td.slice(0,Math.min(4,td.length)));
+    },600);
+  }
+}
+
+function doHumanSwap(){execSwap(0,selIndices());}
+
+function execSwap(pi,indices){
+  var p=G.players[pi],n=indices.length;
+  if(n===0){addLog(p.name+' tauscht nicht.');G.swapPtr++;G.selCards={};render();setTimeout(nextTausch,300);return;}
+  indices.sort(function(a,b){return b-a;}).forEach(function(i){G.stock.push(p.hand.splice(i,1)[0]);});
+  if(n===4){
+    var nc=G.stock.splice(0,Math.min(5,G.stock.length));p.hand=p.hand.concat(nc);
+    addLog(p.name+' tauscht 4, erh\u00e4lt '+nc.length+'.');
+    if(nc.length>=5){if(p.isHuman){askDiscard();return;}else{discardWeakest(pi);return;}}
+  } else {
+    var nc2=G.stock.splice(0,Math.min(n,G.stock.length));p.hand=p.hand.concat(nc2);
+    addLog(p.name+' tauscht '+n+' Karte(n).');
+  }
+  G.swapPtr++;G.selCards={};render();setTimeout(nextTausch,300);
+}
+
+function askDiscard(){
+  G.selCards={};renderHand();
+  setMsg('<strong>5 Karten!</strong> Klicke auf eine Karte zum verdeckt Ablegen.');
+  setBtns([]);
+  var wraps=document.querySelectorAll('#hand-area .cw');
+  for(var i=0;i<wraps.length;i++){
+    (function(idx,wrap){
+      wrap.classList.remove('bad');
+      wrap.onclick=function(){
+        G.players[0].hand.splice(idx,1);
+        addLog('Karte verdeckt abgelegt.');
+        G.swapPtr++;G.selCards={};render();setTimeout(nextTausch,300);
+      };
+    })(i,wraps[i]);
+  }
+}
+
+function discardWeakest(pi){
+  var p=G.players[pi],wi=0,ws=Infinity;
+  for(var i=0;i<p.hand.length;i++){var sc=evalC(p.hand[i],G.trump);if(sc<ws){ws=sc;wi=i;}}
+  p.hand.splice(wi,1);G.swapPtr++;render();setTimeout(nextTausch,300);
+}
+
+function startPlay(){
+  G.phase='play';
+  G.trick=[];
+  G.tricksTotal=0;  // Zählt gespielte Stiche
+  // Chratzer spielt erste Karte aus; danach Gegenuhrzeigersinn (d.h. abnehmende Spieler-Indizes)
+  G.playOrder=[G.chratzer];
+  for(var i=1;i<N;i++){var pi=(G.chratzer-i+N*100)%N;if(G.players[pi].status!=='weg')G.playOrder.push(pi);}
+  G.playPtr=0;
+  // Jeder aktive Spieler hat genau 4 Karten
+  var expected=G.players[G.playOrder[0]].hand.length;
+  addLog('\u2500\u2500 Spiel: '+G.playOrder.length+' Spieler, je '+expected+' Karten \u2500\u2500');
+  render();
+  nextPlay();
+}
+
+function nextPlay(){
+  // Stich noch nicht komplett: nächsten Spieler im Stich
+  if(G.playPtr < G.playOrder.length){
+    var pi=G.playOrder[G.playPtr];
+    render();
+    if(G.players[pi].isHuman){
+      var led=G.trick.length>0?G.trick[0].card.suit:-1;
+      var ln=led>=0?' \u00b7 <em>Angespielt: '+SUITS[led].name+'</em>':'';
+      setMsg('<strong>Dein Zug</strong>'+ln+' \u2013 g\u00fcltige Karte anklicken.');
+      setBtns([]);
+      renderHand();
+    } else {
+      setTimeout(function(){cpuPlay(pi);}, 850);
+    }
+  } else {
+    // Alle haben gespielt – Stich auswerten
+    resolveTrick();
+  }
+}
+
+function isLegal(card,hand,trump){
+  if(!G.trick.length)return true;
+  var led=G.trick[0].card.suit;
+  var hasLed=false;
+  for(var i=0;i<hand.length;i++)if(hand[i].suit===led){hasLed=true;break;}
+  if(card.suit===led)return true;
+  if(!hasLed){
+    var hasTr=false;
+    for(var j=0;j<hand.length;j++)if(hand[j].suit===trump){hasTr=true;break;}
+    if(hasTr)return card.suit===trump;
+    return true;
+  }
+  return false;
+}
+
+function playCard(idx){
+  if(G.phase!=='play')return;
+  if(G.playOrder[G.playPtr]!==0)return;
+  var p=G.players[0],card=p.hand[idx];
+  if(!isLegal(card,p.hand,G.trump)){
+    setMsg('<strong style="color:#e05050">Ung\u00fcltig!</strong> Farbe bekennen oder Trumpf spielen.');
+    return;
+  }
+  // Find card element before removing
+  var handEl=document.getElementById('hand-area');
+  var cardWrap=handEl.querySelector('[data-idx="'+idx+'"]');
+  p.hand.splice(idx,1);
+  G.trick.push({pidx:0,card:card});
+  G.selCards={};
+  addLog('Du spielst: '+cn(card));
+  G.playPtr++;
+  renderHand();
+  if(cardWrap){
+    flyCardToTable(card,cardWrap,function(){render();setTimeout(nextPlay,200);});
+  } else {
+    render();setTimeout(nextPlay,400);
+  }
+}
+
+function trickBest(){
+  var led=G.trick[0].card.suit,best=G.trick[0];
+  G.trick.forEach(function(e){if(beats(e.card,best.card,led,G.trump))best=e;});
+  return best;
+}
+
+function cpuPlay(pi){
+  // Sicherheitscheck: falls Phase sich geändert hat, abbrechen
+  if(G.phase!=='play')return;
+  if(G.playOrder[G.playPtr]!==pi)return;
+
+  var p=G.players[pi];
+  var led=G.trick.length>0?G.trick[0].card.suit:-1;
+  var legal=p.hand.filter(function(c){return isLegal(c,p.hand,G.trump);});
+  if(legal.length===0){legal=p.hand.slice();}  // Fallback: alle Karten
+  var chosen;
+  if(G.trick.length>0){
+    var best=trickBest();
+    var canWin=legal.filter(function(c){return beats(c,best.card,led,G.trump);});
+    if(canWin.length>0&&((pi===G.chratzer&&p.tricks<2)||(p.status==='dabei'&&p.tricks<1))){
+      canWin.sort(function(a,b){return b.rank-a.rank;});chosen=canWin[0];
+    } else {
+      legal.sort(function(a,b){return b.rank-a.rank;});chosen=legal[0];
+    }
+  } else {
+    if(pi===G.chratzer){
+      var nt=legal.filter(function(c){return c.suit!==G.trump;});
+      var pool=nt.length?nt:legal;
+      pool.sort(function(a,b){return a.rank-b.rank;});chosen=pool[0];
+    } else {
+      legal.sort(function(a,b){return b.rank-a.rank;});chosen=legal[0];
+    }
+  }
+  var hi=p.hand.indexOf(chosen);
+  p.hand.splice(hi,1);
+  G.trick.push({pidx:pi,card:chosen});
+  addLog(p.name+': '+cn(chosen));
+  G.playPtr++;
+
+  // Kartensitz-Element finden für Fly-Animation
+  var seatEl = null;
+  var seats = document.querySelectorAll('.seat');
+  for (var si = 0; si < seats.length; si++) {
+    var lbl = seats[si].querySelector('.seat-label');
+    if (lbl && lbl.textContent.indexOf(p.name) !== -1) { seatEl = seats[si]; break; }
+  }
+  var fromEl = seatEl ? seatEl.querySelector('.seat-cards') : null;
+  if (fromEl && fromEl.firstChild) {
+    flyCardToTable(chosen, fromEl.firstChild, function(){ render(); setTimeout(nextPlay, 200); });
+  } else {
+    render();
+    setTimeout(nextPlay, 500);
+  }
+}
+
+function resolveTrick(){
+  var best=trickBest();
+  G.players[best.pidx].tricks++;
+  G.tricksTotal++;
+  addLog('\uD83C\uDFC6 Stich '+G.tricksTotal+' \u2192 '+G.players[best.pidx].name+' ('+cn(best.card)+')');
+  document.getElementById('trick-winner').textContent='\u2192 '+G.players[best.pidx].name+' gewinnt Stich '+G.tricksTotal+'!';
+
+  var winner=best.pidx;
+  var cardsLeft=G.players[winner].hand.length;
+  render();
+
+  // Karten auf dem Tisch zeigen und auf Bestätigung warten
+  var winnerName = G.players[winner].name;
+  var isLastTrick = (cardsLeft === 0);
+  setMsg('<strong>' + winnerName + '</strong> gewinnt Stich ' + G.tricksTotal + '!' + (isLastTrick ? ' <em>Letzte Runde!</em>' : ''));
+  setBtns([{
+    label: isLastTrick ? '\uD83C\uDFC6 Rundenende' : '\u25B6 Weiter',
+    style: isLastTrick ? 'gold' : 'green',
+    fn: function(){
+      // Jetzt erst den Stich auflösen
+      // Gewinner führt den nächsten Stich an; weiter Gegenuhrzeigersinn
+      var newOrder=[winner];
+      for(var ni=1;ni<N;ni++){var npi=(winner-ni+N*100)%N;if(G.players[npi].status!=='weg')newOrder.push(npi);}
+      G.playOrder=newOrder;
+      G.playPtr=0;
+      G.trick=[];
+      render();
+      if(isLastTrick){
+        setTimeout(endRound, 400);
+      } else {
+        document.getElementById('trick-winner').textContent='';
+        setTimeout(nextPlay, 200);
+      }
+    }
+  }]);
+}
+
+function endRound(){
+  G.phase='end';
+  var chr=G.players[G.chratzer];
+  var dabei=G.players.filter(function(p){return p.status==='dabei';});
+  var dG=dabei.filter(function(p){return p.tricks>=1;});
+  var dV=dabei.filter(function(p){return p.tricks<1;});
+  var chrWon=chr.tricks>=2;
+  var potStart=G.potStart;
+  var lines=['<strong>'+chr.name+'</strong> sagt AUF!: '+chr.tricks+' Stich(e) | Pot: Fr. '+potStart.toFixed(2)+'.'];
+  var anyPenalty=false;
+
+  // SCHRITT 1: Pot verteilen an Gewinner (Pot wird 0)
+  if(chrWon){
+    var cs=+(potStart*2/3).toFixed(2);
+    var rest=+(potStart-cs).toFixed(2);
+    chr.balance+=cs;
+    lines.push('\u2705 '+chr.name+' gewinnt Fr. '+cs.toFixed(2)+' (2/3).');
+    if(dG.length>0){
+      var sh=+(rest/dG.length).toFixed(2);
+      dG.forEach(function(p){p.balance+=sh;});
+      lines.push('\u2705 '+dG.map(function(p){return p.name;}).join(', ')+' teilen Fr. '+rest.toFixed(2)+' (1/3).');
+    }
+  } else {
+    if(dG.length>0){
+      var sh2=+(potStart/dG.length).toFixed(2);
+      dG.forEach(function(p){p.balance+=sh2;});
+      lines.push('\u2705 '+dG.map(function(p){return p.name;}).join(', ')+' teilen Fr. '+potStart.toFixed(2)+'.');
+    }
+  }
+
+  // SCHRITT 2: Pot = 0, dann Strafen einzahlen
+  G.pot=0; G.potContrib={};
+
+  if(chrWon){
+    dV.forEach(function(p){
+      var idx=G.players.indexOf(p);
+      var pen=+potStart.toFixed(2);
+      p.balance-=pen; G.pot=+(G.pot+pen).toFixed(2);
+      G.potContrib[idx]=(G.potContrib[idx]||0)+pen;
+      lines.push('\u274C '+p.name+' zahlt Fr. '+pen.toFixed(2)+' (1\u00d7 Pot).');
+      anyPenalty=true;
+    });
+  } else {
+    var chrIdx=G.chratzer;
+    var pen2=+(potStart*2).toFixed(2);
+    chr.balance-=pen2; G.pot=+(G.pot+pen2).toFixed(2);
+    G.potContrib[chrIdx]=(G.potContrib[chrIdx]||0)+pen2;
+    lines.push('\u274C '+chr.name+' zahlt Fr. '+pen2.toFixed(2)+' (2\u00d7 Pot).');
+    anyPenalty=true;
+    dV.forEach(function(p){
+      var idx=G.players.indexOf(p);
+      var pen3=+potStart.toFixed(2);
+      p.balance-=pen3; G.pot=+(G.pot+pen3).toFixed(2);
+      G.potContrib[idx]=(G.potContrib[idx]||0)+pen3;
+      lines.push('\u274C '+p.name+' zahlt Fr. '+pen3.toFixed(2)+' (1\u00d7 Pot).');
+      anyPenalty=true;
+    });
+  }
+
+  G.pot=+G.pot.toFixed(2);
+  G.needsEinsatz=!anyPenalty;
+  if(anyPenalty){
+    lines.push('<em style="color:#c9a84c">Neuer Pot: Fr. '+G.pot.toFixed(2)+' \u2013 kein Grundeinsatz n\u00e4chste Runde.</em>');
+  } else {
+    G.potContrib={};
+    lines.push('<em style="color:#c9a84c">Pot leer \u2013 Grundeinsatz n\u00e4chste Runde.</em>');
+  }
+
+  G.geber=(G.geber-1+N)%N;
+  render();
+  showModal('Rundenende',lines.join('<br>'),[
+    {label:'\uD83C\uDCF4 N\u00e4chste Runde',style:'gold',fn:startRound},
+    {label:'\u2699 Neu einrichten',style:'gray',fn:function(){showSetupDialog(startGame);}},
+    {label:'\u23F9 Beenden',style:'red',fn:function(){
+      setMsg('Spiel beendet.');
+      setBtns([{label:'\uD83D\uDD04 Neu starten',style:'gold',fn:function(){showSetupDialog(startGame);}}]);
+    }}
+  ]);
+}
+
+// Boot
+showSetupDialog(startGame);
+
+</script>
+</body>
+</html>
