@@ -110,6 +110,27 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
 #modal h2{color:var(--gold);font-size:1.25rem;font-weight:800;margin-bottom:12px;text-align:center;}
 #modal p{color:var(--text);line-height:1.65;font-size:0.84rem;margin-bottom:16px;}
 #modal-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+
+/* ── LOBBY ── */
+#lobby-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);}
+#lobby-box{background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px 28px;max-width:440px;width:94%;box-shadow:0 24px 80px rgba(0,0,0,0.9);}
+#lobby-box h1{color:var(--gold);font-size:1.55rem;font-weight:800;text-align:center;margin-bottom:4px;}
+.lobby-sub{color:var(--text-d);font-size:0.75rem;text-align:center;margin-bottom:22px;}
+.lobby-tabs{display:flex;gap:6px;margin-bottom:20px;}
+.ltab{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-d);cursor:pointer;font-family:inherit;font-size:0.8rem;font-weight:600;transition:all 0.2s;}
+.ltab.active{background:var(--gold);color:#0f1000;border-color:var(--gold);}
+.lobby-input{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,0.05);color:var(--text);font-family:inherit;font-size:0.9rem;margin-bottom:10px;outline:none;transition:border-color 0.2s;}
+.lobby-input:focus{border-color:var(--gold);}
+.lobby-code-big{text-align:center;font-size:2.8rem;font-weight:800;color:var(--gold);letter-spacing:14px;margin:14px 0;font-family:'Courier New',monospace;background:rgba(226,184,74,0.07);border-radius:12px;padding:14px;}
+#lobby-player-list{display:flex;flex-direction:column;gap:6px;margin:10px 0;min-height:32px;}
+.lp-row{padding:8px 12px;background:rgba(255,255,255,0.05);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:0.82rem;}
+.lp-host{font-size:0.55rem;background:rgba(226,184,74,0.18);color:var(--gold);border-radius:10px;padding:1px 7px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;}
+.lp-me{font-size:0.55rem;background:rgba(61,186,122,0.18);color:var(--green);border-radius:10px;padding:1px 7px;font-weight:700;}
+.lobby-settings{background:rgba(255,255,255,0.03);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.8rem;display:flex;align-items:center;gap:8px;}
+.lobby-settings label{color:var(--text-d);}
+.lobby-settings input{width:72px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,0.06);color:var(--text);font-family:inherit;text-align:center;outline:none;}
+.lobby-hint{font-size:0.68rem;color:var(--text-d);text-align:center;margin-top:10px;line-height:1.7;}
+.lobby-err{color:var(--red);font-size:0.75rem;text-align:center;margin-bottom:8px;min-height:18px;}
 </style>
 </head>
 <body>
@@ -153,6 +174,77 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
 <div id="log"></div>
 <div id="overlay"><div id="modal"><h2 id="modal-title"></h2><p id="modal-body"></p><div id="modal-btns"></div></div></div>
 
+<!-- ══════════════════════ LOBBY ══════════════════════ -->
+<div id="lobby-overlay">
+  <div id="lobby-box">
+    <h1>&#9827; AUF! – Chratze</h1>
+    <p class="lobby-sub">Schweizer Jass</p>
+
+    <!-- Tabs -->
+    <div class="lobby-tabs">
+      <button class="ltab active" id="ltab-solo"    onclick="lobbyTab('solo')">Solo</button>
+      <button class="ltab"        id="ltab-create"  onclick="lobbyTab('create')">Raum erstellen</button>
+      <button class="ltab"        id="ltab-join"    onclick="lobbyTab('join')">Beitreten</button>
+    </div>
+
+    <!-- Solo -->
+    <div id="lsec-solo">
+      <p style="font-size:0.82rem;color:var(--text-d);margin-bottom:16px;">Spiele gegen CPU-Gegner auf diesem Gerät.</p>
+      <button class="btn btn-gold" style="width:100%" onclick="lobbyStartSolo()">Solo spielen</button>
+    </div>
+
+    <!-- Create -->
+    <div id="lsec-create" style="display:none">
+      <input class="lobby-input" id="lname-c" placeholder="Dein Name" maxlength="16">
+      <div class="lobby-err" id="lerr-c"></div>
+      <button class="btn btn-gold" style="width:100%" onclick="lobbyCreate()">Raum erstellen</button>
+    </div>
+
+    <!-- Join -->
+    <div id="lsec-join" style="display:none">
+      <input class="lobby-input" id="lname-j" placeholder="Dein Name" maxlength="16">
+      <input class="lobby-input" id="lcode-j" placeholder="Raumcode (4 Zeichen)" maxlength="4"
+             style="text-transform:uppercase;letter-spacing:6px;font-size:1.1rem;font-weight:700;text-align:center"
+             oninput="this.value=this.value.toUpperCase()">
+      <div class="lobby-err" id="lerr-j"></div>
+      <button class="btn btn-green" style="width:100%" onclick="lobbyJoin()">Beitreten</button>
+    </div>
+
+    <!-- Waiting room (shown after create/join) -->
+    <div id="lsec-wait" style="display:none">
+      <div style="text-align:center;color:var(--text-d);font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;">Raumcode</div>
+      <div class="lobby-code-big" id="lcode-show">----</div>
+      <div id="lobby-player-list"></div>
+      <div class="lobby-settings" id="lsettings-host">
+        <label>Einsatz: Fr.</label>
+        <input type="number" id="l-einsatz" value="0.20" min="0.05" max="10" step="0.05">
+        <span style="color:var(--text-d);">/ Spieler</span>
+      </div>
+      <button class="btn btn-gold" id="lstart-btn" style="width:100%;margin-bottom:6px;" disabled onclick="lobbyStartGame()">Warte auf Spieler…</button>
+      <div class="lobby-hint" id="lhint">Teile den Raumcode mit deinen Freunden.<br>Mindestens 2 Spieler zum Starten.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  FIREBASE KONFIGURATION
+//  1. firebase.google.com → Projekt erstellen
+//  2. Realtime Database anlegen (Testmodus)
+//  3. Projekteinstellungen → Deine Apps → Web-App → Config hier einfügen
+// ══════════════════════════════════════════════════════
+var FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyC1xVMjBIkVw8h9O8IGRmFx6zJ0Bt4lhBA",
+  authDomain:        "jass---chratzere.firebaseapp.com",
+  databaseURL:       "https://jass---chratzere-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "jass---chratzere"
+};
+</script>
+
 <script>
 // ═══════════════════════════════════════════════════════════════
 //  SCHWEIZER JASSKARTEN – Echte GIF-Bilder aus cards/ Ordner
@@ -167,7 +259,6 @@ var RANKS      = ['A','K','O','U','10','9','8','7','6'];
 var RNAMES     = ['Ass','König','Ober','Under','Banner','9','8','7','6'];
 var RANK_FILES = ['ass','koenig','ober','under','banner','neun','acht','sieben','sechs'];
 
-// Preload all 36 card images
 var _imgCache = {};
 (function(){
   for(var s=0;s<4;s++) for(var r=0;r<9;r++){
@@ -212,6 +303,326 @@ function makeCard(suit,rank,w,h){
   img.alt=RNAMES[rank]+' '+SUITS[suit].name;
   wrap.appendChild(img);
   return wrap;
+}
+</script>
+
+<script>
+// ═══════════════════════════════════════════════
+//  MULTIPLAYER STATE
+// ═══════════════════════════════════════════════
+var MP = {
+  active:           false,   // Multiplayer-Modus aktiv?
+  isHost:           false,   // Bin ich Host?
+  myIndex:          0,       // Mein Spieler-Index
+  roomCode:         '',
+  db:               null,
+  roomRef:          null,
+  stateRef:         null,
+  moveRef:          null,
+  waitingForMove:   null,    // Callback auf nächsten Move
+  playerNames:      []
+};
+
+// Mein Spieler-Index (0 im Solo-Modus, MP.myIndex im MP-Modus)
+function myPI(){ return MP.active ? MP.myIndex : 0; }
+
+// ── Firebase / Lobby ──────────────────────────────────────────
+
+function fbReady(){
+  if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey==='DEIN_API_KEY'){
+    lerr('c','Firebase nicht konfiguriert – bitte FIREBASE_CONFIG in index.html ausfüllen.');
+    lerr('j','Firebase nicht konfiguriert – bitte FIREBASE_CONFIG in index.html ausfüllen.');
+    return false;
+  }
+  if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  MP.db = firebase.database();
+  return true;
+}
+
+function genCode(){
+  var c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s='';
+  for(var i=0;i<4;i++) s+=c[Math.floor(Math.random()*c.length)];
+  return s;
+}
+
+function lerr(side,msg){ var el=document.getElementById('lerr-'+side); if(el) el.textContent=msg||''; }
+
+function lobbyTab(tab){
+  ['solo','create','join'].forEach(function(t){
+    document.getElementById('ltab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('lsec-'+t).style.display = t===tab ? '' : 'none';
+  });
+  document.getElementById('lsec-wait').style.display='none';
+  lerr('c',''); lerr('j','');
+}
+
+function lobbyStartSolo(){
+  document.getElementById('lobby-overlay').style.display='none';
+  showSetupDialog(startGame);
+}
+
+function lobbyCreate(){
+  if(!fbReady()) return;
+  var name=(document.getElementById('lname-c').value||'').trim()||'Spieler 1';
+  lerr('c','');
+  var code=genCode();
+  MP.roomCode=code; MP.isHost=true; MP.myIndex=0; MP.active=true;
+  MP.roomRef = MP.db.ref('rooms/'+code);
+  MP.stateRef = MP.roomRef.child('state');
+  MP.moveRef  = MP.roomRef.child('move');
+
+  MP.roomRef.set({
+    players:{ 0:{ name:name, index:0 } },
+    started:false
+  });
+
+  showLobbyWait(code, true);
+  listenLobbyPlayers();
+}
+
+function lobbyJoin(){
+  if(!fbReady()) return;
+  var name=(document.getElementById('lname-j').value||'').trim()||'Spieler';
+  var code=(document.getElementById('lcode-j').value||'').trim().toUpperCase();
+  lerr('j','');
+  if(code.length!==4){ lerr('j','Bitte 4-stelligen Raumcode eingeben.'); return; }
+
+  var ref=MP.db.ref('rooms/'+code);
+  ref.once('value', function(snap){
+    var room=snap.val();
+    if(!room){ lerr('j','Raum "'+code+'" nicht gefunden.'); return; }
+    if(room.started){ lerr('j','Dieses Spiel läuft bereits.'); return; }
+    var taken=Object.keys(room.players||{}).map(Number);
+    if(taken.length>=6){ lerr('j','Raum ist voll.'); return; }
+    var next=1; while(taken.indexOf(next)!==-1) next++;
+
+    MP.roomCode=code; MP.isHost=false; MP.myIndex=next; MP.active=true;
+    MP.roomRef=ref;
+    MP.stateRef=MP.roomRef.child('state');
+    MP.moveRef =MP.roomRef.child('move');
+
+    MP.roomRef.child('players/'+next).set({ name:name, index:next });
+    showLobbyWait(code, false);
+    listenLobbyPlayers();
+
+    // Non-Host: auf Spielstart warten
+    MP.roomRef.child('started').on('value', function(s){
+      if(s.val()!==true) return;
+      document.getElementById('lobby-overlay').style.display='none';
+      listenGameState();
+    });
+  });
+}
+
+function showLobbyWait(code, isHost){
+  ['solo','create','join'].forEach(function(t){
+    document.getElementById('lsec-'+t).style.display='none';
+    document.getElementById('ltab-'+t).classList.remove('active');
+  });
+  document.getElementById('lsec-wait').style.display='';
+  document.getElementById('lcode-show').textContent=code;
+  if(!isHost){
+    document.getElementById('lstart-btn').style.display='none';
+    document.getElementById('lsettings-host').style.display='none';
+    document.getElementById('lhint').textContent='Verbunden! Warte auf den Host…';
+  }
+}
+
+function listenLobbyPlayers(){
+  MP.roomRef.child('players').on('value', function(snap){
+    var players=snap.val()||{};
+    var list=document.getElementById('lobby-player-list'); if(!list) return;
+    list.innerHTML='';
+    var count=0;
+    Object.values(players).sort(function(a,b){return a.index-b.index;}).forEach(function(p){
+      var row=document.createElement('div'); row.className='lp-row';
+      row.innerHTML='<span style="color:var(--green);">●</span> <span style="flex:1">'+p.name+'</span>'
+        +(p.index===0?'<span class="lp-host">Host</span>':'')
+        +(p.index===MP.myIndex?'<span class="lp-me">Ich</span>':'');
+      list.appendChild(row); count++;
+    });
+    var btn=document.getElementById('lstart-btn');
+    if(btn && MP.isHost){
+      btn.disabled=count<2;
+      btn.textContent = count<2 ? 'Warte auf Spieler…' : 'Spiel starten ('+count+' Spieler)';
+    }
+    N=count;
+  });
+}
+
+function lobbyStartGame(){
+  if(!MP.isHost) return;
+  var ei=parseFloat(document.getElementById('l-einsatz').value)||0.20;
+  EINSATZ=Math.max(0.05,Math.min(10,Math.round(ei/0.05)*0.05));
+
+  MP.roomRef.child('players').once('value', function(snap){
+    var players=snap.val()||{};
+    MP.playerNames=[];
+    Object.values(players).sort(function(a,b){return a.index-b.index;}).forEach(function(p){
+      MP.playerNames[p.index]=p.name;
+    });
+    N=MP.playerNames.length;
+    for(var i=0;i<N;i++) if(!MP.playerNames[i]) MP.playerNames[i]='Spieler '+(i+1);
+
+    // Einsatz und Spieler an alle kommunizieren
+    MP.roomRef.child('settings').set({ einsatz:EINSATZ, playerNames:MP.playerNames });
+    MP.roomRef.child('started').set(true);
+    document.getElementById('lobby-overlay').style.display='none';
+    listenForMoves();
+    startGameMP();
+  });
+}
+
+// ── Firebase State Sync ──────────────────────────────────────
+
+function syncState(){
+  if(!MP.active || !MP.isHost || !MP.stateRef) return;
+  try { MP.stateRef.set(JSON.parse(JSON.stringify(G))); } catch(e){}
+}
+
+function listenGameState(){
+  // Non-Host: liest Einstellungen und hört auf State
+  MP.roomRef.child('settings').once('value', function(snap){
+    var s=snap.val()||{};
+    EINSATZ=s.einsatz||0.20;
+    MP.playerNames=s.playerNames||[];
+    N=MP.playerNames.length||5;
+  });
+  MP.stateRef.on('value', function(snap){
+    var state=snap.val(); if(!state) return;
+    var localSel=G.selCards||{};
+    G=state;
+    // Arrays die Firebase als Objekte speichert wiederherstellen
+    if(!G.players) G.players=[];
+    G.players=Object.values(G.players||{});
+    G.players.forEach(function(p){ p.hand=p.hand?Object.values(p.hand):[]; });
+    G.trick     = G.trick     ? Object.values(G.trick)     : [];
+    G.stock     = G.stock     ? Object.values(G.stock)     : [];
+    G.ansageOrder=G.ansageOrder?Object.values(G.ansageOrder):[];
+    G.playOrder =G.playOrder  ?Object.values(G.playOrder)  :[];
+    G.swapOrder =G.swapOrder  ?Object.values(G.swapOrder)  :[];
+    G.potContrib=G.potContrib ||{};
+    G.selCards  ={};
+    // Lokale Kartenauswahl erhalten falls mein Tausch-Zug
+    if(G.phase==='tausch' && G.swapOrder[G.swapPtr]===MP.myIndex) G.selCards=localSel;
+    render();
+    checkMyTurnRemote();
+  });
+}
+
+function checkMyTurnRemote(){
+  if(!MP.active || MP.isHost) return;
+  var mi=MP.myIndex;
+  var p=G.players[mi]; if(!p) return;
+
+  // Discard (5 Karten nach Tausch)
+  if(G.awaitingDiscard===mi){
+    renderHand();
+    setMsg('<strong>5 Karten!</strong> Klicke auf eine zum verdeckt Ablegen.');
+    setBtns([]);
+    var wraps=document.querySelectorAll('#hand-area .cw');
+    for(var i=0;i<wraps.length;i++){
+      (function(idx,w){ w.classList.remove('bad');
+        w.onclick=function(){ submitMove({type:'discard',cardIdx:idx}); setMsg('Warte…'); setBtns([]); disableHandClicks(); };
+      })(i,wraps[i]);
+    }
+    return;
+  }
+
+  if(G.phase==='ansage' && G.ansageOrder[G.ansagePtr]===mi){
+    setMsg('<strong>Ansage:</strong> Möchtest du <em>AUF!</em> (2 Stiche) oder <em>wegbleiben</em>?');
+    setBtns([
+      {label:'⚡ AUF!',style:'gold',fn:function(){ submitMove({type:'chratze'}); setMsg('Warte…'); setBtns([]); }},
+      {label:'👋 Weg', style:'gray',fn:function(){ submitMove({type:'weg'});     setMsg('Warte…'); setBtns([]); }}
+    ]);
+  } else if(G.phase==='metcho' && G.ansageOrder[G.ansagePtr]===mi){
+    var cname=G.players[G.chratzer]?G.players[G.chratzer].name:'?';
+    setMsg('<strong>'+cname+'</strong> sagt AUF! – Willst du <em>mit</em> (1 Stich) oder <em>weg</em>?');
+    setBtns([
+      {label:'✅ Mit!',style:'green',fn:function(){ submitMove({type:'mit'});    setMsg('Warte…'); setBtns([]); }},
+      {label:'👋 Weg', style:'gray', fn:function(){ submitMove({type:'weg_m'}); setMsg('Warte…'); setBtns([]); }}
+    ]);
+  } else if(G.phase==='tausch' && G.swapOrder[G.swapPtr]===mi){
+    G.selCards={};
+    renderHand();
+    setMsg('<strong>Kartentausch:</strong> Karten anklicken, dann Tauschen drücken.<br><em>Alle 4 tauschen = 5 neue, 1 verdeckt ablegen.</em>');
+    setBtns([
+      {label:'🔄 Tauschen (0)',style:'gold',fn:function(){
+        var idxs=selIndices();
+        submitMove({type:'tausch',indices:idxs});
+        setMsg('Warte…'); setBtns([]);
+      }},
+      {label:'▶ Nicht tauschen',style:'gray',fn:function(){
+        submitMove({type:'tausch',indices:[]});
+        setMsg('Warte…'); setBtns([]);
+      }}
+    ]);
+    // Tauschen-Zähler aktualisieren
+    var tBtn=document.querySelector('#btns .btn-gold');
+    if(tBtn) tBtn.textContent='🔄 Tauschen ('+selIndices().length+')';
+  } else if(G.phase==='play' && G.playOrder[G.playPtr]===mi){
+    var led=G.trick.length>0?G.trick[0].card.suit:-1;
+    var ln=led>=0?' · <em>Angespielt: '+SUITS[led].name+'</em>':'';
+    setMsg('<strong>Dein Zug</strong>'+ln+' – gültige Karte anklicken.');
+    setBtns([]);
+    renderHand();
+  } else if(G.awaitingContinue){
+    var wname=G.players[G.trickWinner]?G.players[G.trickWinner].name:'?';
+    setMsg('<strong>'+wname+'</strong> gewinnt Stich '+G.tricksTotal+'!'+(G.isLastTrick?' <em>Letzte Runde!</em>':''));
+    setBtns([{
+      label: G.isLastTrick ? '🏆 Rundenende' : '▶ Weiter',
+      style: G.isLastTrick ? 'gold' : 'green',
+      fn: function(){ submitMove({type:'continue'}); setMsg('Warte…'); setBtns([]); }
+    }]);
+  } else {
+    // Nicht mein Zug
+    var wmsg='Warte…';
+    if(G.phase==='ansage'&&G.ansageOrder&&G.ansageOrder[G.ansagePtr]>=0){
+      var ap=G.players[G.ansageOrder[G.ansagePtr]];
+      wmsg='Warte auf <strong>'+(ap?ap.name:'?')+'</strong>…';
+    } else if(G.phase==='metcho'&&G.ansageOrder&&G.ansageOrder[G.ansagePtr]>=0){
+      var mp2=G.players[G.ansageOrder[G.ansagePtr]];
+      wmsg='Warte auf <strong>'+(mp2?mp2.name:'?')+'</strong>…';
+    } else if(G.phase==='tausch'&&G.swapOrder&&G.swapOrder[G.swapPtr]>=0){
+      var tp=G.players[G.swapOrder[G.swapPtr]];
+      wmsg=(tp?tp.name:'?')+' tauscht…';
+    } else if(G.phase==='play'&&G.playOrder&&G.playOrder[G.playPtr]>=0){
+      var pp=G.players[G.playOrder[G.playPtr]];
+      wmsg='<strong>'+(pp?pp.name:'?')+'</strong> ist am Zug…';
+    }
+    setMsg(wmsg); setBtns([]);
+  }
+}
+
+function listenForMoves(){
+  if(!MP.isHost || !MP.moveRef) return;
+  MP.moveRef.on('value', function(snap){
+    var move=snap.val();
+    if(!move || !MP.waitingForMove) return;
+    var cb=MP.waitingForMove; MP.waitingForMove=null;
+    MP.moveRef.remove();
+    cb(move);
+  });
+}
+
+function waitForRemote(cb){
+  MP.waitingForMove=cb;
+  // Falls Move schon da
+  if(!MP.moveRef) return;
+  MP.moveRef.once('value', function(snap){
+    var move=snap.val();
+    if(!move || !MP.waitingForMove) return;
+    MP.waitingForMove=null; MP.moveRef.remove(); cb(move);
+  });
+}
+
+function submitMove(move){
+  if(MP.active && !MP.isHost && MP.moveRef) MP.moveRef.set(move);
+}
+
+function disableHandClicks(){
+  var ws=document.querySelectorAll('#hand-area .cw');
+  for(var i=0;i<ws.length;i++) ws[i].onclick=null;
 }
 </script>
 
@@ -273,251 +684,186 @@ function bdg(status,isG,isC){
   var h='';
   if(isG)h+=' <span class="badge b-g">Geber</span>';
   if(isC||status==='chratzer')h+=' <span class="badge b-c">AUF!</span>';
-  else if(status==='dabei')h+=' <span class="badge b-d">Dabei</span>';
+  else if(status==='dabei')h+=' <span class="badge b-d">Mit</span>';
   else if(status==='weg')h+=' <span class="badge b-w">Weg</span>';
   return h;
 }
 
 // ── Sitzposition berechnen ────────────────────────────────
-// Spieler 0 = lokaler Spieler, sitzt unten (hand-area), wird NICHT auf dem Tisch gerendert.
-// CPU-Spieler (Index 1..N-1) werden auf dem Tischrand verteilt.
-// Positionen als {x, y} in % des table-circle (0,0 = oben-links, 50,50 = Mitte).
-// Der untere Bereich (~210°–330°) bleibt frei damit nichts die hand-area verdeckt.
-//
-// Vordefinierte Positionen pro Spieleranzahl:
-//   N=3: 2 CPU  → links + rechts oben
-//   N=4: 3 CPU  → links, oben-mitte, rechts
-//   N=5: 4 CPU  → links-oben, oben-links, oben-rechts, rechts-oben
-//   N=6: 5 CPU  → links, oben-links, oben, oben-rechts, rechts
-//
-// Radius ~47% damit die Seat-Labels nicht abgeschnitten werden.
 var SEAT_POSITIONS = {
-  3: [
-    null,          // Spieler 0 = ich (hand-area)
-    { x: 16, y: 42 },  // links
-    { x: 84, y: 42 }   // rechts
-  ],
-  4: [
-    null,
-    { x: 14, y: 50 },  // links Mitte
-    { x: 50, y:  8 },  // oben Mitte
-    { x: 86, y: 50 }   // rechts Mitte
-  ],
-  5: [
-    null,
-    { x: 12, y: 68 },  // links-unten (aber über hand-area)
-    { x: 18, y: 22 },  // links-oben
-    { x: 82, y: 22 },  // rechts-oben
-    { x: 88, y: 68 }   // rechts-unten
-  ],
-  6: [
-    null,
-    { x: 12, y: 68 },  // links-unten
-    { x: 12, y: 28 },  // links-oben
-    { x: 50, y:  8 },  // oben Mitte
-    { x: 88, y: 28 },  // rechts-oben
-    { x: 88, y: 68 }   // rechts-unten
-  ]
+  3: [ null, { x:16, y:42 }, { x:84, y:42 } ],
+  4: [ null, { x:14, y:50 }, { x:50, y:8  }, { x:86, y:50 } ],
+  5: [ null, { x:12, y:68 }, { x:18, y:22 }, { x:82, y:22 }, { x:88, y:68 } ],
+  6: [ null, { x:12, y:68 }, { x:12, y:28 }, { x:50, y:8  }, { x:88, y:28 }, { x:88, y:68 } ]
 };
 
-function seatPos(playerIdx) {
-  var positions = SEAT_POSITIONS[N];
-  if (positions && positions[playerIdx]) return positions[playerIdx];
-  // Fallback: gleichmässig auf oberem Halbkreis (90° ± 80°)
-  var steps = N - 1;
-  var t = steps <= 1 ? 0.5 : (playerIdx - 1) / (steps - 1);
-  var angle = (200 + t * 140) % 360; // 200° bis 340°, also linke+obere+rechte Seite
-  var rad = angle * Math.PI / 180;
-  return { x: 50 + 44 * Math.cos(rad), y: 50 + 44 * Math.sin(rad) };
+function seatPos(playerIdx){
+  var mi=myPI();
+  // Anzeige-Index: 0=ich (hand-area), 1..N-1=andere um den Tisch
+  var displayIdx=(playerIdx-mi+N)%N;
+  var positions=SEAT_POSITIONS[N];
+  if(positions&&positions[displayIdx]) return positions[displayIdx];
+  var steps=N-1;
+  var t=steps<=1?0.5:(displayIdx-1)/(steps-1);
+  var angle=(200+t*140)%360;
+  var rad=angle*Math.PI/180;
+  return {x:50+44*Math.cos(rad),y:50+44*Math.sin(rad)};
 }
 
 function render(){
-  document.getElementById('round-tag').textContent = 'Runde ' + G.round + ' \u00b7 ' + G.players[G.geber].name + ' gibt \u00b7 Fr. ' + EINSATZ.toFixed(2);
+  document.getElementById('round-tag').textContent='Runde '+G.round+' · '+G.players[G.geber].name+' gibt · Fr. '+EINSATZ.toFixed(2);
+  document.getElementById('pot-val').textContent='Fr. '+G.pot.toFixed(2);
 
-  // Pot (topbar only – gross, kein Breakdown)
-  var potTxt = 'Fr. ' + G.pot.toFixed(2);
-  document.getElementById('pot-val').textContent = potTxt;
+  var pbLines=[];
+  if(G.potContrib){ for(var pi2=0;pi2<G.players.length;pi2++){ var amt=G.potContrib[pi2]||0; if(amt>0) pbLines.push(G.players[pi2].name+': Fr. '+amt.toFixed(2)); } }
+  document.getElementById('ip-pot-breakdown').innerHTML=pbLines.length?pbLines.join('<br>'):'–';
 
-  // Pot breakdown → Info Panel
-  var pbLines = [];
-  if (G.potContrib) {
-    for (var pi2 = 0; pi2 < G.players.length; pi2++) {
-      var amt = G.potContrib[pi2] || 0;
-      if (amt > 0) pbLines.push(G.players[pi2].name + ': Fr. ' + amt.toFixed(2));
-    }
-  }
-  document.getElementById('ip-pot-breakdown').innerHTML = pbLines.length ? pbLines.join('<br>') : '–';
-
-  // Scores
-  var se = document.getElementById('scores');
-  se.innerHTML = G.players.map(function(p, i) {
-    var cls = p.balance > 0 ? 'pos' : p.balance < 0 ? 'neg' : 'zero';
-    return '<div class="sc"><div class="sc-name">' + p.name + (i===G.geber?' \u2295':'') + '</div>'
-      + '<div class="sc-val ' + cls + '">' + (p.balance>=0?'+':'') + p.balance.toFixed(2) + '</div>'
-      + '<div class="sc-tricks">Stiche: ' + p.tricks + '</div></div>';
+  var se=document.getElementById('scores');
+  se.innerHTML=G.players.map(function(p,i){
+    var cls=p.balance>0?'pos':p.balance<0?'neg':'zero';
+    return '<div class="sc"><div class="sc-name">'+p.name+(i===G.geber?' ⊕':'')+'</div>'
+      +'<div class="sc-val '+cls+'">'+(p.balance>=0?'+':'')+p.balance.toFixed(2)+'</div>'
+      +'<div class="sc-tricks">Stiche: '+p.tricks+'</div></div>';
   }).join('');
 
-  // Seats – remove old, re-render all players around table
-  var circle = document.getElementById('table-circle');
-  // Remove old seats
-  var oldSeats = circle.querySelectorAll('.seat');
-  for (var s = 0; s < oldSeats.length; s++) circle.removeChild(oldSeats[s]);
+  var circle=document.getElementById('table-circle');
+  var oldSeats=circle.querySelectorAll('.seat');
+  for(var s=0;s<oldSeats.length;s++) circle.removeChild(oldSeats[s]);
 
-  for (var pi = 0; pi < N; pi++) {
-    if (pi === 0) continue; // Human player drawn separately in hand-area
-    var p = G.players[pi];
-    var pos = seatPos(pi);
-    var isAct = (G.phase==='ansage'&&G.ansageOrder[G.ansagePtr]===pi)
-      || (G.phase==='metcho'&&G.ansageOrder[G.ansagePtr]===pi)
-      || (G.phase==='tausch'&&G.swapOrder[G.swapPtr]===pi)
-      || (G.phase==='play'&&G.playOrder[G.playPtr]===pi);
+  var mi=myPI();
+  for(var pi=0;pi<N;pi++){
+    if(pi===mi) continue;
+    var p=G.players[pi]; if(!p) continue;
+    var pos=seatPos(pi);
+    var isAct=(G.phase==='ansage'&&G.ansageOrder[G.ansagePtr]===pi)
+      ||(G.phase==='metcho'&&G.ansageOrder[G.ansagePtr]===pi)
+      ||(G.phase==='tausch'&&G.swapOrder[G.swapPtr]===pi)
+      ||(G.phase==='play'&&G.playOrder[G.playPtr]===pi);
 
-    var seat = document.createElement('div');
-    seat.className = 'seat' + (p.status==='weg'?' out':'') + (isAct?' active':'');
-    seat.style.left = pos.x + '%';
-    seat.style.top  = pos.y + '%';
+    var seat=document.createElement('div');
+    seat.className='seat'+(p.status==='weg'?' out':'')+(isAct?' active':'');
+    seat.style.left=pos.x+'%'; seat.style.top=pos.y+'%';
 
-    var lbl = document.createElement('div');
-    lbl.className = 'seat-label' + (isAct?' active-lbl':'');
-    lbl.innerHTML = p.name + bdg(p.status, pi===G.geber, pi===G.chratzer);
+    var lbl=document.createElement('div');
+    lbl.className='seat-label'+(isAct?' active-lbl':'');
+    lbl.innerHTML=p.name+bdg(p.status,pi===G.geber,pi===G.chratzer);
 
-    var cards = document.createElement('div');
-    cards.className = 'seat-cards';
-    var showCards = Math.min(p.hand.length, 6);
-    for (var k = 0; k < showCards; k++) cards.appendChild(makeBack(CWS, CHS));
+    var cards=document.createElement('div'); cards.className='seat-cards';
+    var showCards=Math.min(p.hand.length,6);
+    for(var k=0;k<showCards;k++) cards.appendChild(makeBack(CWS,CHS));
 
-    var info = document.createElement('div');
-    info.className = 'seat-info';
-    info.textContent = p.hand.length + ' Karten \u00b7 ' + p.tricks + ' Stiche';
+    var info=document.createElement('div'); info.className='seat-info';
+    info.textContent=p.hand.length+' Karten · '+p.tricks+' Stiche';
 
-    seat.appendChild(lbl);
-    seat.appendChild(cards);
-    seat.appendChild(info);
+    seat.appendChild(lbl); seat.appendChild(cards); seat.appendChild(info);
     circle.appendChild(seat);
   }
 
-  // Trump → Info Panel
-  if (G.trump === -1) {
-    document.getElementById('ip-trump-suit').textContent = '\u2014';
-    document.getElementById('ip-trump-card').innerHTML = '';
-    document.getElementById('ip-trump-idx').textContent = '';
+  if(G.trump===-1){
+    document.getElementById('ip-trump-suit').textContent='—';
+    document.getElementById('ip-trump-card').innerHTML='';
+    document.getElementById('ip-trump-idx').textContent='';
   } else {
-    document.getElementById('ip-trump-suit').textContent = SUITS[G.trump].name;
-    var w = document.getElementById('ip-trump-card');
-    w.innerHTML = '';
-    if (G.trumpCard) w.appendChild(makeCard(G.trumpCard.suit, G.trumpCard.rank, CWS, CHS));
-    document.getElementById('ip-trump-idx').textContent = 'Karte ' + G.trumpCardIdx + ' / 3';
+    document.getElementById('ip-trump-suit').textContent=SUITS[G.trump].name;
+    var w=document.getElementById('ip-trump-card'); w.innerHTML='';
+    if(G.trumpCard) w.appendChild(makeCard(G.trumpCard.suit,G.trumpCard.rank,CWS,CHS));
+    document.getElementById('ip-trump-idx').textContent='Karte '+G.trumpCardIdx+' / 3';
   }
 
-  // Stock → Info Panel
-  document.getElementById('ip-stock').textContent = G.stock.length > 0 ? G.stock.length + ' Karten' : 'leer';
+  document.getElementById('ip-stock').textContent=G.stock.length>0?G.stock.length+' Karten':'leer';
 
-  // Trick cards (static, no animation – animation is in playCard)
-  var ta = document.getElementById('trick-area');
-  // Keep trick-winner, replace cards
-  var tw = document.getElementById('trick-winner');
-  ta.innerHTML = '';
-  ta.appendChild(tw);
-  G.trick.forEach(function(e) {
-    var wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;';
-    var lbl = document.createElement('div');
-    lbl.style.cssText = 'font-size:0.55rem;color:rgba(255,255,255,0.5);text-align:center;';
-    lbl.textContent = G.players[e.pidx].name;
-    var img = makeCard(e.card.suit, e.card.rank, CT, HT);
-    wrap.appendChild(lbl);
-    wrap.appendChild(img);
-    ta.appendChild(wrap);
+  var ta=document.getElementById('trick-area');
+  var tw=document.getElementById('trick-winner');
+  ta.innerHTML=''; ta.appendChild(tw);
+  G.trick.forEach(function(e){
+    var wrap=document.createElement('div');
+    wrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:2px;';
+    var lbl2=document.createElement('div');
+    lbl2.style.cssText='font-size:0.55rem;color:rgba(255,255,255,0.5);text-align:center;';
+    lbl2.textContent=G.players[e.pidx].name;
+    var img=makeCard(e.card.suit,e.card.rank,CT,HT);
+    wrap.appendChild(lbl2); wrap.appendChild(img); ta.appendChild(wrap);
   });
 
   renderHand();
 }
 
 function renderHand(){
-  var p = G.players[0];
-  var el = document.getElementById('hand-area');
-  el.innerHTML = '';
-  var isPlay = G.phase==='play' && G.playOrder[G.playPtr]===0;
-  var isSwap = G.phase==='tausch' && G.swapOrder[G.swapPtr]===0;
-  p.hand.forEach(function(card, idx){
-    var wrap = document.createElement('div');
-    wrap.className = 'cw' + (G.selCards[idx] ? ' sel' : '');
-    wrap.setAttribute('data-idx', idx);
-    wrap.appendChild(makeCard(card.suit, card.rank, CW, CH));
-    if (isPlay) {
-      if (!isLegal(card, p.hand, G.trump)) wrap.classList.add('bad');
-      else { (function(i){ wrap.onclick = function(){ playCard(i); }; })(idx); }
-    } else if (isSwap) {
-      (function(i){ wrap.onclick = function(){ toggleSel(i); }; })(idx);
+  var mi=myPI();
+  var p=G.players[mi]; if(!p) return;
+  var el=document.getElementById('hand-area'); el.innerHTML='';
+  var isPlay=G.phase==='play'&&G.playOrder[G.playPtr]===mi;
+  var isSwap=G.phase==='tausch'&&G.swapOrder[G.swapPtr]===mi;
+  p.hand.forEach(function(card,idx){
+    var wrap=document.createElement('div');
+    wrap.className='cw'+(G.selCards[idx]?' sel':'');
+    wrap.setAttribute('data-idx',idx);
+    wrap.appendChild(makeCard(card.suit,card.rank,CW,CH));
+    if(isPlay){
+      if(!isLegal(card,p.hand,G.trump)) wrap.classList.add('bad');
+      else {
+        if(MP.active&&!MP.isHost){
+          // Non-Host: Move senden
+          (function(i){ wrap.onclick=function(){
+            if(!isLegal(G.players[mi].hand[i],G.players[mi].hand,G.trump)) return;
+            submitMove({type:'playCard',cardIdx:i});
+            setMsg('Warte…'); setBtns([]);
+            disableHandClicks();
+          }; })(idx);
+        } else {
+          (function(i){ wrap.onclick=function(){ playCard(i); }; })(idx);
+        }
+      }
+    } else if(isSwap){
+      (function(i){ wrap.onclick=function(){ toggleSel(i); }; })(idx);
     }
     el.appendChild(wrap);
   });
 }
 
 // ── Flying card animation ─────────────────────────────────
-// cardEl: card object {suit,rank} OR DOM element; fromEl: source DOM element
-function flyCardToTable(cardEl, fromEl, callback) {
-  // Get position of the source element
-  var fromRect = fromEl.getBoundingClientRect();
-  // Get center of trick area
-  var ta = document.getElementById('trick-area');
-  var taRect = ta.getBoundingClientRect();
-
-  var flyer = document.getElementById('card-flyer');
-  flyer.innerHTML = '';
+function flyCardToTable(cardEl,fromEl,callback){
+  var fromRect=fromEl.getBoundingClientRect();
+  var ta=document.getElementById('trick-area');
+  var taRect=ta.getBoundingClientRect();
+  var flyer=document.getElementById('card-flyer'); flyer.innerHTML='';
   var clone;
-  // If cardEl is a card object {suit,rank}, render the actual card face
-  if (cardEl && typeof cardEl === 'object' && 'suit' in cardEl && 'rank' in cardEl) {
-    clone = makeCard(cardEl.suit, cardEl.rank, CW, CH);
+  if(cardEl&&typeof cardEl==='object'&&'suit' in cardEl&&'rank' in cardEl){
+    clone=makeCard(cardEl.suit,cardEl.rank,CW,CH);
   } else {
-    // Fall back to cloning from DOM
-    var inner = fromEl.querySelector('img, svg, div');
-    clone = inner ? inner.cloneNode(true) : fromEl.cloneNode(true);
+    var inner=fromEl.querySelector('img,svg,div');
+    clone=inner?inner.cloneNode(true):fromEl.cloneNode(true);
   }
-  clone.style.cssText = 'width:' + CW + 'px;height:' + CH + 'px;border-radius:5px;box-shadow:4px 6px 16px rgba(0,0,0,0.7);display:block;';
+  clone.style.cssText='width:'+CW+'px;height:'+CH+'px;border-radius:5px;box-shadow:4px 6px 16px rgba(0,0,0,0.7);display:block;';
   flyer.appendChild(clone);
-
-  // Start position
-  flyer.style.display = 'block';
-  flyer.style.transition = 'none';
-  flyer.style.left = fromRect.left + 'px';
-  flyer.style.top  = fromRect.top  + 'px';
-  flyer.style.transform = 'scale(1)';
-  flyer.style.opacity = '1';
-
-  // Target: center of trick area
-  var tx = taRect.left + taRect.width/2  - CW/2;
-  var ty = taRect.top  + taRect.height/2 - CH/2;
-
-  // Trigger animation
+  flyer.style.display='block'; flyer.style.transition='none';
+  flyer.style.left=fromRect.left+'px'; flyer.style.top=fromRect.top+'px';
+  flyer.style.transform='scale(1)'; flyer.style.opacity='1';
+  var tx=taRect.left+taRect.width/2-CW/2;
+  var ty=taRect.top+taRect.height/2-CH/2;
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
       flyer.classList.add('flying');
-      flyer.style.left = tx + 'px';
-      flyer.style.top  = ty + 'px';
-      flyer.style.transform = 'scale(0.88)';
-      setTimeout(function(){
-        flyer.style.display = 'none';
-        flyer.classList.remove('flying');
-        callback();
-      }, 680);
+      flyer.style.left=tx+'px'; flyer.style.top=ty+'px';
+      flyer.style.transform='scale(0.88)';
+      setTimeout(function(){ flyer.style.display='none'; flyer.classList.remove('flying'); callback(); },680);
     });
   });
 }
+
 function toggleSel(idx){
   G.selCards[idx]=!G.selCards[idx];
   var count=Object.keys(G.selCards).filter(function(k){return G.selCards[k];}).length;
   renderHand();
   var btn=document.querySelector('#btns .btn-gold');
-  if(btn)btn.textContent='\uD83D\uDD04 Tauschen ('+count+')';
+  if(btn) btn.textContent='🔄 Tauschen ('+count+')';
 }
 function selIndices(){return Object.keys(G.selCards).filter(function(k){return G.selCards[k];}).map(Number);}
 
-// ── Einsatz-Dialog ────────────────────────────────────────
-// ── Setup-Dialog: Spielerzahl + Grundeinsatz ───────────────
-function showSetupDialog(callback) {
-  document.getElementById('modal-title').textContent = 'Spiel einrichten';
-  document.getElementById('modal-body').innerHTML =
+// ── Setup-Dialog (Solo) ───────────────────────────────────
+function showSetupDialog(callback){
+  document.getElementById('modal-title').textContent='Spiel einrichten';
+  document.getElementById('modal-body').innerHTML=
     '<div style="font-family:Arial;font-size:0.9rem;line-height:2;">'
     +'<div style="margin-bottom:10px;">'
     +'<label style="color:#c9a84c;font-weight:700;">Anzahl Spieler:</label><br>'
@@ -539,42 +885,38 @@ function showSetupDialog(callback) {
     +'<div style="font-size:0.72rem;color:#c4b99a;margin-top:5px;">Total: Fr. <span id="total-display">'+(EINSATZ*N).toFixed(2)+'</span> pro Runde</div>'
     +'</div></div>';
 
-  var el = document.getElementById('modal-btns'); el.innerHTML='';
-  var selectedN = N;
+  var el=document.getElementById('modal-btns'); el.innerHTML='';
+  var selectedN=N;
 
   setTimeout(function(){
-    // Spielerzahl-Buttons
-    var nBtns = document.querySelectorAll('.n-btn');
+    var nBtns=document.querySelectorAll('.n-btn');
     nBtns.forEach(function(btn){
-      btn.onclick = function(){
-        selectedN = parseInt(btn.getAttribute('data-n'));
-        nBtns.forEach(function(b){ b.className='btn btn-gray n-btn'; });
-        btn.className = 'btn btn-gold n-btn';
-        var v = parseFloat(document.getElementById('einsatz-input').value)||EINSATZ;
-        document.getElementById('total-display').textContent = (v*selectedN).toFixed(2);
+      btn.onclick=function(){
+        selectedN=parseInt(btn.getAttribute('data-n'));
+        nBtns.forEach(function(b){b.className='btn btn-gray n-btn';});
+        btn.className='btn btn-gold n-btn';
+        var v=parseFloat(document.getElementById('einsatz-input').value)||EINSATZ;
+        document.getElementById('total-display').textContent=(v*selectedN).toFixed(2);
       };
     });
-    // Einsatz-Input
-    var inp = document.getElementById('einsatz-input');
-    if(inp) inp.oninput = function(){
-      var v = parseFloat(inp.value)||0;
-      document.getElementById('total-display').textContent = (v*selectedN).toFixed(2);
+    var inp=document.getElementById('einsatz-input');
+    if(inp) inp.oninput=function(){
+      var v=parseFloat(inp.value)||0;
+      document.getElementById('total-display').textContent=(v*selectedN).toFixed(2);
     };
-  }, 50);
+  },50);
 
-  var startBtn = document.createElement('button');
-  startBtn.className = 'btn btn-gold';
-  startBtn.textContent = 'Spiel starten';
-  startBtn.onclick = function(){
-    var inp = document.getElementById('einsatz-input');
-    var val = parseFloat(inp ? inp.value : EINSATZ);
+  var startBtn=document.createElement('button');
+  startBtn.className='btn btn-gold';
+  startBtn.textContent='Spiel starten';
+  startBtn.onclick=function(){
+    var inp=document.getElementById('einsatz-input');
+    var val=parseFloat(inp?inp.value:EINSATZ);
     if(isNaN(val)||val<0.05) val=0.05;
     if(val>10) val=10;
-    val = Math.round(val/0.05)*0.05;
-    EINSATZ = +val.toFixed(2);
-    N = selectedN;
-    hideModal();
-    callback();
+    val=Math.round(val/0.05)*0.05;
+    EINSATZ=+val.toFixed(2); N=selectedN;
+    hideModal(); callback();
   };
   el.appendChild(startBtn);
   document.getElementById('overlay').classList.add('show');
@@ -582,6 +924,7 @@ function showSetupDialog(callback) {
 
 // ── Game flow ──────────────────────────────────────────────
 function startGame(){
+  MP.active=false; MP.myIndex=0;
   G={phase:'start',round:0,
     players:[],geber:0|Math.random()*N,
     chratzer:-1,trump:-1,trumpCard:null,trumpCardIdx:1,
@@ -590,32 +933,46 @@ function startGame(){
     ansageOrder:[],ansagePtr:0,
     playOrder:[],playPtr:0,
     swapOrder:[],swapPtr:0,
-    selCards:{},
-    needsEinsatz:true,
-    tricksTotal:0
+    selCards:{},needsEinsatz:true,tricksTotal:0,
+    awaitingContinue:false,awaitingDiscard:-1
   };
-  for(var i=0;i<N;i++)G.players.push({name:i===0?'Du':'CPU '+i,hand:[],tricks:0,status:'none',balance:0,isHuman:i===0});
-  addLog('\uD83C\uDCF4 AUF! '+N+' Spieler, Einsatz Fr. '+EINSATZ.toFixed(2));
+  for(var i=0;i<N;i++) G.players.push({name:i===0?'Du':'CPU '+i,hand:[],tricks:0,status:'none',balance:0,isHuman:i===0});
+  addLog('🃏 AUF! '+N+' Spieler, Einsatz Fr. '+EINSATZ.toFixed(2));
+  startRound();
+}
+
+function startGameMP(){
+  G={phase:'start',round:0,
+    players:[],geber:0|Math.random()*N,
+    chratzer:-1,trump:-1,trumpCard:null,trumpCardIdx:1,
+    potStart:0,pot:0,potContrib:{},
+    stock:[],trick:[],
+    ansageOrder:[],ansagePtr:0,
+    playOrder:[],playPtr:0,
+    swapOrder:[],swapPtr:0,
+    selCards:{},needsEinsatz:true,tricksTotal:0,
+    awaitingContinue:false,awaitingDiscard:-1
+  };
+  for(var i=0;i<N;i++) G.players.push({name:MP.playerNames[i]||('Spieler '+(i+1)),hand:[],tricks:0,status:'none',balance:0,isHuman:true});
+  addLog('🃏 AUF! '+N+' Spieler (Multiplayer), Einsatz Fr. '+EINSATZ.toFixed(2));
   startRound();
 }
 
 function startRound(){
   G.round++;G.chratzer=-1;G.trump=-1;G.trumpCard=null;G.trumpCardIdx=1;
-  G.trick=[];G.selCards={};G.tricksTotal=0;
+  G.trick=[];G.selCards={};G.tricksTotal=0;G.awaitingContinue=false;G.awaitingDiscard=-1;
   G.players.forEach(function(p){p.hand=[];p.tricks=0;p.status='none';});
 
   if(G.needsEinsatz){
     G.pot=0;G.potContrib={};
     G.players.forEach(function(p,i){
-      p.balance-=EINSATZ;
-      G.pot=+(G.pot+EINSATZ).toFixed(2);
+      p.balance-=EINSATZ; G.pot=+(G.pot+EINSATZ).toFixed(2);
       G.potContrib[i]=(G.potContrib[i]||0)+EINSATZ;
       G.potContrib[i]=+G.potContrib[i].toFixed(2);
     });
-    addLog('\u2500\u2500 Runde '+G.round+' \u00b7 Grundeinsatz Fr. '+EINSATZ.toFixed(2)+' x'+N+' = Fr. '+G.pot.toFixed(2));
+    addLog('── Runde '+G.round+' · Grundeinsatz Fr. '+EINSATZ.toFixed(2)+' x'+N+' = Fr. '+G.pot.toFixed(2));
   } else {
-    // Pot bleibt (von Verlierern aufgefüllt, potContrib schon gesetzt)
-    addLog('\u2500\u2500 Runde '+G.round+' \u00b7 Pot bleibt: Fr. '+G.pot.toFixed(2)+' (kein Grundeinsatz)');
+    addLog('── Runde '+G.round+' · Pot bleibt: Fr. '+G.pot.toFixed(2)+' (kein Grundeinsatz)');
   }
   G.potStart=G.pot;
   dealCards();
@@ -633,169 +990,209 @@ function dealCards(){
     for(var off2=1;off2<=N;off2++)
       G.players[(G.geber-off2+N*100)%N].hand.push(deck[idx++]);
   G.stock=deck.slice(idx);
-  addLog('Trumpf: '+SUITS[G.trump].name+' ('+cn(G.trumpCard)+') \u00b7 Geber: '+G.players[G.geber].name);
-  render();startAnsage();
+  addLog('Trumpf: '+SUITS[G.trump].name+' ('+cn(G.trumpCard)+') · Geber: '+G.players[G.geber].name);
+  syncState(); render(); startAnsage();
 }
 
 function startAnsage(){
   G.phase='ansage';G.ansageOrder=[];
-  for(var i=1;i<=N;i++)G.ansageOrder.push((G.geber-i+N*100)%N);
-  G.ansagePtr=0;render();nextAnsage();
+  for(var i=1;i<=N;i++) G.ansageOrder.push((G.geber-i+N*100)%N);
+  G.ansagePtr=0; syncState(); render(); nextAnsage();
 }
 
 function nextAnsage(){
   if(G.ansagePtr>=G.ansageOrder.length){
     if(G.trumpCardIdx<3){revealNewTrump();return;}
-    // Nach 3 Trumpfkarten: alle zahlen Grundeinsatz, neu mischen
-    addLog('Niemand sagt AUF! \u2013 neu mischen! Alle zahlen Fr. '+EINSATZ.toFixed(2)+'.');
+    addLog('Niemand sagt AUF! – neu mischen! Alle zahlen Fr. '+EINSATZ.toFixed(2)+'.');
     G.players.forEach(function(p){p.balance-=EINSATZ;G.pot+=EINSATZ;});
-    G.pot=+G.pot.toFixed(2);
-    G.potStart=G.pot;
+    G.pot=+G.pot.toFixed(2); G.potStart=G.pot;
+    syncState();
     showModal('Neu Mischen',
       'Niemand hat AUF! gesagt bei 3 Trumpfkarten!<br>Alle zahlen nochmals Fr. '+EINSATZ.toFixed(2)+' ein.<br><br>Pot: <strong>Fr. '+G.pot.toFixed(2)+'</strong>',
-      [{label:'\uD83D\uDD04 Neu mischen',style:'gold',fn:dealCards}]);
+      [{label:'🔄 Neu mischen',style:'gold',fn:dealCards}]);
     return;
   }
-  var pi=G.ansageOrder[G.ansagePtr];render();
-  if(G.players[pi].isHuman){
-    setMsg('<strong>Ansage:</strong> M\u00f6chtest du <em>AUF!</em> (2 Stiche) oder <em>wegbleiben</em>?');
+  var pi=G.ansageOrder[G.ansagePtr]; syncState(); render();
+
+  if(pi===myPI()){
+    setMsg('<strong>Ansage:</strong> Möchtest du <em>AUF!</em> (2 Stiche) oder <em>wegbleiben</em>?');
     setBtns([
-      {label:'\u26A1 AUF!',style:'gold',fn:function(){doChratze(0);}},
-      {label:'\uD83D\uDC4B Weg',style:'gray',fn:function(){doWeg(0);}}
+      {label:'⚡ AUF!',style:'gold',fn:function(){doChratze(myPI());}},
+      {label:'👋 Weg', style:'gray',fn:function(){doWeg(myPI());}}
     ]);
-  } else {
+  } else if(MP.active&&MP.isHost){
+    setMsg('Warte auf <strong>'+G.players[pi].name+'</strong>…');
+    setBtns([]);
+    waitForRemote(function(move){
+      if(move.type==='chratze') doChratze(pi); else doWeg(pi);
+    });
+  } else if(!MP.active){
     setTimeout(function(){
-      if(evalH(G.players[pi].hand,G.trump)>1.6&&G.chratzer===-1)doChratze(pi);else doWeg(pi);
+      if(evalH(G.players[pi].hand,G.trump)>1.6&&G.chratzer===-1) doChratze(pi); else doWeg(pi);
     },700);
   }
 }
 
 function doChratze(pi){
-  G.players[pi].status='chratzer';G.chratzer=pi;
-  addLog('\u26A1 '+G.players[pi].name+' AUF!');
-  // Alle nochmals fragen – inkl. wer vorher "weg" war (Regel 4)
-  G.phase='metcho';G.ansageOrder=[];
-  for(var i=1;i<N;i++)G.ansageOrder.push((G.chratzer-i+N*100)%N);
-  // Status aller "weg"-Spieler zurücksetzen damit sie nochmals gefragt werden
+  G.players[pi].status='chratzer'; G.chratzer=pi;
+  addLog('⚡ '+G.players[pi].name+' AUF!');
+  G.phase='metcho'; G.ansageOrder=[];
+  for(var i=1;i<N;i++) G.ansageOrder.push((G.chratzer-i+N*100)%N);
   G.players.forEach(function(p,i){if(i!==pi&&p.status==='weg')p.status='none';});
-  G.ansagePtr=0;render();setTimeout(nextMetcho,400);
+  G.ansagePtr=0; syncState(); render(); setTimeout(nextMetcho,400);
 }
 
 function doWeg(pi){
   G.players[pi].status='weg';
   addLog(G.players[pi].name+': Weg.');
-  G.ansagePtr++;render();setTimeout(nextAnsage,350);
+  G.ansagePtr++; syncState(); render(); setTimeout(nextAnsage,350);
 }
 
 function nextMetcho(){
   if(G.ansagePtr>=G.ansageOrder.length){
     var dabei=G.players.filter(function(p){return p.status==='dabei';});
     if(dabei.length===0){
-      // Susi-Regel: letzter Spieler in der Metcho-Reihenfolge muss mit
       var last=G.ansageOrder[G.ansageOrder.length-1];
-      if(G.players[last].isHuman){
+      if(last===myPI()){
         addLog('Susi-Regel: Du musst mit!');
-        setMsg('<strong>Susi-Regel:</strong> Niemand kommt mit \u2013 du bist dran!');
-        setBtns([{label:'\uD83D\uDE05 Mit (Pflicht)',style:'green',fn:function(){doMetcho(0);}}]);
+        setMsg('<strong>Susi-Regel:</strong> Niemand kommt mit – du bist dran!');
+        setBtns([{label:'😅 Mit (Pflicht)',style:'green',fn:function(){doMetcho(myPI());}}]);
         return;
-      } else {
+      } else if(MP.active&&MP.isHost&&last!==myPI()){
+        // Remote Susi
         addLog('Susi: '+G.players[last].name+' muss mit.');
-        G.players[last].status='dabei';render();setTimeout(startTausch,400);return;
+        G.players[last].status='dabei'; syncState(); render(); setTimeout(startTausch,400); return;
+      } else if(!MP.active){
+        addLog('Susi: '+G.players[last].name+' muss mit.');
+        G.players[last].status='dabei'; render(); setTimeout(startTausch,400); return;
       }
     }
-    render();setTimeout(startTausch,400);return;
+    syncState(); render(); setTimeout(startTausch,400); return;
   }
-  var pi=G.ansageOrder[G.ansagePtr],p=G.players[pi];render();
-  // Status 'none' bedeutet: vorher weg, jetzt nochmals fragen (Regel 4)
-  if(p.isHuman&&(p.status==='none'||p.status==='dabei')){
+  var pi=G.ansageOrder[G.ansagePtr], p=G.players[pi];
+  syncState(); render();
+
+  if(pi===myPI()){
     var wasWeg=p.status==='none';
     setMsg((wasWeg?'<em>Du warst weg – aber </em>':'')
       +'<strong>'+G.players[G.chratzer].name+'</strong> sagt AUF! – Willst du <em>mit</em> (1 Stich) oder <em>weg</em>?');
     setBtns([
-      {label:'\u2705 Mit!',style:'green',fn:function(){doMetcho(0);}},
-      {label:'\uD83D\uDC4B Weg',style:'gray',fn:function(){doWeg_m(0);}}
+      {label:'✅ Mit!', style:'green',fn:function(){doMetcho(myPI());}},
+      {label:'👋 Weg', style:'gray', fn:function(){doWeg_m(myPI());}}
     ]);
   } else if(p.status==='weg'){
-    // Bereits definitiv weg (in Metcho-Phase gesetzt)
-    G.ansagePtr++;setTimeout(nextMetcho,100);
-  } else {
-    // CPU
+    G.ansagePtr++; setTimeout(nextMetcho,100);
+  } else if(MP.active&&MP.isHost){
+    setMsg('Warte auf <strong>'+p.name+'</strong>…'); setBtns([]);
+    waitForRemote(function(move){
+      if(move.type==='mit') doMetcho(pi); else doWeg_m(pi);
+    });
+  } else if(!MP.active){
     setTimeout(function(){
       if(p.status==='none'||p.status==='dabei'){
-        if(evalH(p.hand,G.trump)>0.9)doMetcho(pi);else doWeg_m(pi);
-      } else {
-        G.ansagePtr++;setTimeout(nextMetcho,100);
-      }
+        if(evalH(p.hand,G.trump)>0.9) doMetcho(pi); else doWeg_m(pi);
+      } else { G.ansagePtr++; setTimeout(nextMetcho,100); }
     },650);
   }
 }
 
 function doMetcho(pi){
   G.players[pi].status='dabei';
-  addLog('\u2705 '+G.players[pi].name+' kommt mit.');
-  G.ansagePtr++;render();setTimeout(nextMetcho,350);
+  addLog('✅ '+G.players[pi].name+' kommt mit.');
+  G.ansagePtr++; syncState(); render(); setTimeout(nextMetcho,350);
 }
 
 function doWeg_m(pi){
   G.players[pi].status='weg';
   addLog(G.players[pi].name+': Weg.');
-  G.ansagePtr++;render();setTimeout(nextMetcho,350);
+  G.ansagePtr++; syncState(); render(); setTimeout(nextMetcho,350);
 }
 
 function revealNewTrump(){
   G.trumpCardIdx++;
-  if(!G.stock.length){addLog('Kein Stock \u2013 neu mischen!');dealCards();return;}
-  var nc=G.stock.shift();G.trumpCard=nc;G.trump=nc.suit;
-  // Alle Spieler wieder auf 'none' setzen für neue Ansage-Runde
-  G.players.forEach(function(p){p.status='none';});G.chratzer=-1;
+  if(!G.stock.length){addLog('Kein Stock – neu mischen!');dealCards();return;}
+  var nc=G.stock.shift(); G.trumpCard=nc; G.trump=nc.suit;
+  G.players.forEach(function(p){p.status='none';}); G.chratzer=-1;
   addLog('Neue Trumpfkarte ('+G.trumpCardIdx+'/3): '+SUITS[G.trump].name+' ('+cn(nc)+')');
-  render();setTimeout(startAnsage,500);
+  syncState(); render(); setTimeout(startAnsage,500);
 }
 
 function startTausch(){
-  G.phase='tausch';G.swapOrder=[G.chratzer];
-  for(var i=1;i<N;i++){var pi=(G.chratzer-i+N*100)%N;if(G.players[pi].status==='dabei')G.swapOrder.push(pi);}
-  G.swapPtr=0;G.selCards={};render();setTimeout(nextTausch,300);
+  G.phase='tausch'; G.swapOrder=[G.chratzer];
+  for(var i=1;i<N;i++){var pi=(G.chratzer-i+N*100)%N; if(G.players[pi].status==='dabei') G.swapOrder.push(pi);}
+  G.swapPtr=0; G.selCards={}; syncState(); render(); setTimeout(nextTausch,300);
 }
 
 function nextTausch(){
-  if(G.swapPtr>=G.swapOrder.length){render();setTimeout(startPlay,300);return;}
-  var pi=G.swapOrder[G.swapPtr];render();
-  if(G.players[pi].isHuman){
-    G.selCards={};renderHand();
-    setMsg('<strong>Kartentausch:</strong> Karten anklicken zum Markieren, dann Tauschen dr\u00fccken.<br><em>Alle 4 tauschen = 5 neue erhalten, 1 verdeckt ablegen.</em>');
+  if(G.swapPtr>=G.swapOrder.length){syncState();render();setTimeout(startPlay,300);return;}
+  var pi=G.swapOrder[G.swapPtr]; syncState(); render();
+
+  if(pi===myPI()){
+    G.selCards={}; renderHand();
+    setMsg('<strong>Kartentausch:</strong> Karten anklicken zum Markieren, dann Tauschen drücken.<br><em>Alle 4 tauschen = 5 neue erhalten, 1 verdeckt ablegen.</em>');
     setBtns([
-      {label:'\uD83D\uDD04 Tauschen (0)',style:'gold',fn:doHumanSwap},
-      {label:'\u25B6 Nicht tauschen',style:'gray',fn:function(){execSwap(0,[]);}}
+      {label:'🔄 Tauschen (0)',style:'gold',fn:doHumanSwap},
+      {label:'▶ Nicht tauschen',style:'gray',fn:function(){execSwap(myPI(),[]);}}
     ]);
-  } else {
+  } else if(MP.active&&MP.isHost){
+    setMsg(G.players[pi].name+' tauscht…'); setBtns([]);
+    waitForRemote(function(move){
+      if(move.type==='tausch') execSwap(pi,move.indices||[]);
+      else if(move.type==='discard'){
+        G.players[pi].hand.splice(move.cardIdx,1);
+        addLog(G.players[pi].name+' legt Karte ab.');
+        G.awaitingDiscard=-1;
+        G.swapPtr++; G.selCards={};
+        syncState(); render(); setTimeout(nextTausch,300);
+      }
+    });
+  } else if(!MP.active){
     setTimeout(function(){
-      var p=G.players[pi],td=[];
-      for(var i=0;i<p.hand.length;i++){if(p.hand[i].suit!==G.trump&&p.hand[i].rank!==0)td.push(i);}
+      var p2=G.players[pi],td=[];
+      for(var i=0;i<p2.hand.length;i++){if(p2.hand[i].suit!==G.trump&&p2.hand[i].rank!==0)td.push(i);}
       execSwap(pi,td.slice(0,Math.min(4,td.length)));
     },600);
   }
 }
 
-function doHumanSwap(){execSwap(0,selIndices());}
+function doHumanSwap(){execSwap(myPI(),selIndices());}
 
 function execSwap(pi,indices){
   var p=G.players[pi],n=indices.length;
-  if(n===0){addLog(p.name+' tauscht nicht.');G.swapPtr++;G.selCards={};render();setTimeout(nextTausch,300);return;}
+  if(n===0){addLog(p.name+' tauscht nicht.');G.swapPtr++;G.selCards={};syncState();render();setTimeout(nextTausch,300);return;}
   indices.sort(function(a,b){return b-a;}).forEach(function(i){G.stock.push(p.hand.splice(i,1)[0]);});
   if(n===4){
-    var nc=G.stock.splice(0,Math.min(5,G.stock.length));p.hand=p.hand.concat(nc);
-    addLog(p.name+' tauscht 4, erh\u00e4lt '+nc.length+'.');
-    if(nc.length>=5){if(p.isHuman){askDiscard();return;}else{discardWeakest(pi);return;}}
+    var nc=G.stock.splice(0,Math.min(5,G.stock.length)); p.hand=p.hand.concat(nc);
+    addLog(p.name+' tauscht 4, erhält '+nc.length+'.');
+    if(nc.length>=5){
+      if(pi===myPI()){askDiscard();return;}
+      else if(MP.active&&MP.isHost){
+        // Non-Host muss ablegen: State syncen, dann auf Move warten
+        G.awaitingDiscard=pi;
+        syncState(); render();
+        waitForRemote(function(move){
+          if(move.type==='discard'){
+            G.players[pi].hand.splice(move.cardIdx,1);
+            addLog(G.players[pi].name+' legt Karte ab.');
+            G.awaitingDiscard=-1;
+            G.swapPtr++;G.selCards={};
+            syncState();render();setTimeout(nextTausch,300);
+          }
+        });
+        return;
+      } else if(!G.players[pi].isHuman){
+        discardWeakest(pi);return;
+      }
+    }
   } else {
-    var nc2=G.stock.splice(0,Math.min(n,G.stock.length));p.hand=p.hand.concat(nc2);
+    var nc2=G.stock.splice(0,Math.min(n,G.stock.length)); p.hand=p.hand.concat(nc2);
     addLog(p.name+' tauscht '+n+' Karte(n).');
   }
-  G.swapPtr++;G.selCards={};render();setTimeout(nextTausch,300);
+  G.swapPtr++;G.selCards={};syncState();render();setTimeout(nextTausch,300);
 }
 
 function askDiscard(){
-  G.selCards={};renderHand();
+  G.selCards={}; renderHand();
   setMsg('<strong>5 Karten!</strong> Klicke auf eine Karte zum verdeckt Ablegen.');
   setBtns([]);
   var wraps=document.querySelectorAll('#hand-area .cw');
@@ -803,9 +1200,15 @@ function askDiscard(){
     (function(idx,wrap){
       wrap.classList.remove('bad');
       wrap.onclick=function(){
-        G.players[0].hand.splice(idx,1);
-        addLog('Karte verdeckt abgelegt.');
-        G.swapPtr++;G.selCards={};render();setTimeout(nextTausch,300);
+        if(MP.active&&!MP.isHost){
+          submitMove({type:'discard',cardIdx:idx});
+          setMsg('Warte…'); setBtns([]); disableHandClicks();
+        } else {
+          G.players[myPI()].hand.splice(idx,1);
+          addLog('Karte verdeckt abgelegt.');
+          G.awaitingDiscard=-1;
+          G.swapPtr++;G.selCards={};syncState();render();setTimeout(nextTausch,300);
+        }
       };
     })(i,wraps[i]);
   }
@@ -814,54 +1217,59 @@ function askDiscard(){
 function discardWeakest(pi){
   var p=G.players[pi],wi=0,ws=Infinity;
   for(var i=0;i<p.hand.length;i++){var sc=evalC(p.hand[i],G.trump);if(sc<ws){ws=sc;wi=i;}}
-  p.hand.splice(wi,1);G.swapPtr++;render();setTimeout(nextTausch,300);
+  p.hand.splice(wi,1);G.swapPtr++;syncState();render();setTimeout(nextTausch,300);
 }
 
 function startPlay(){
-  G.phase='play';
-  G.trick=[];
-  G.tricksTotal=0;  // Zählt gespielte Stiche
-  // Chratzer spielt erste Karte aus; danach Gegenuhrzeigersinn (d.h. abnehmende Spieler-Indizes)
+  G.phase='play'; G.trick=[]; G.tricksTotal=0; G.awaitingContinue=false;
   G.playOrder=[G.chratzer];
-  for(var i=1;i<N;i++){var pi=(G.chratzer-i+N*100)%N;if(G.players[pi].status!=='weg')G.playOrder.push(pi);}
+  for(var i=1;i<N;i++){var pi=(G.chratzer-i+N*100)%N; if(G.players[pi].status!=='weg') G.playOrder.push(pi);}
   G.playPtr=0;
-  // Jeder aktive Spieler hat genau 4 Karten
   var expected=G.players[G.playOrder[0]].hand.length;
-  addLog('\u2500\u2500 Spiel: '+G.playOrder.length+' Spieler, je '+expected+' Karten \u2500\u2500');
-  render();
-  nextPlay();
+  addLog('── Spiel: '+G.playOrder.length+' Spieler, je '+expected+' Karten ──');
+  syncState(); render(); nextPlay();
 }
 
 function nextPlay(){
-  // Stich noch nicht komplett: nächsten Spieler im Stich
-  if(G.playPtr < G.playOrder.length){
-    var pi=G.playOrder[G.playPtr];
-    render();
-    if(G.players[pi].isHuman){
+  if(G.playPtr<G.playOrder.length){
+    var pi=G.playOrder[G.playPtr]; syncState(); render();
+    if(pi===myPI()){
       var led=G.trick.length>0?G.trick[0].card.suit:-1;
-      var ln=led>=0?' \u00b7 <em>Angespielt: '+SUITS[led].name+'</em>':'';
-      setMsg('<strong>Dein Zug</strong>'+ln+' \u2013 g\u00fcltige Karte anklicken.');
-      setBtns([]);
-      renderHand();
-    } else {
-      setTimeout(function(){cpuPlay(pi);}, 850);
+      var ln=led>=0?' · <em>Angespielt: '+SUITS[led].name+'</em>':'';
+      setMsg('<strong>Dein Zug</strong>'+ln+' – gültige Karte anklicken.');
+      setBtns([]); renderHand();
+    } else if(MP.active&&MP.isHost){
+      setMsg('<strong>'+G.players[pi].name+'</strong> ist am Zug…'); setBtns([]);
+      waitForRemote(function(move){
+        if(move.type==='playCard') processRemoteCard(pi,move.cardIdx);
+      });
+    } else if(!MP.active){
+      setTimeout(function(){cpuPlay(pi);},850);
     }
   } else {
-    // Alle haben gespielt – Stich auswerten
     resolveTrick();
   }
 }
 
+function processRemoteCard(pi,cardIdx){
+  var p=G.players[pi];
+  if(!p.hand[cardIdx]){addLog('Fehler: Karte '+cardIdx+' nicht gefunden bei '+p.name);return;}
+  var card=p.hand[cardIdx];
+  p.hand.splice(cardIdx,1);
+  G.trick.push({pidx:pi,card:card});
+  G.selCards={}; addLog(p.name+': '+cn(card)); G.playPtr++;
+  syncState(); render(); setTimeout(nextPlay,500);
+}
+
 function isLegal(card,hand,trump){
   if(!G.trick.length)return true;
-  var led=G.trick[0].card.suit;
-  var hasLed=false;
-  for(var i=0;i<hand.length;i++)if(hand[i].suit===led){hasLed=true;break;}
+  var led=G.trick[0].card.suit, hasLed=false;
+  for(var i=0;i<hand.length;i++) if(hand[i].suit===led){hasLed=true;break;}
   if(card.suit===led)return true;
   if(!hasLed){
     var hasTr=false;
-    for(var j=0;j<hand.length;j++)if(hand[j].suit===trump){hasTr=true;break;}
-    if(hasTr)return card.suit===trump;
+    for(var j=0;j<hand.length;j++) if(hand[j].suit===trump){hasTr=true;break;}
+    if(hasTr) return card.suit===trump;
     return true;
   }
   return false;
@@ -869,118 +1277,104 @@ function isLegal(card,hand,trump){
 
 function playCard(idx){
   if(G.phase!=='play')return;
-  if(G.playOrder[G.playPtr]!==0)return;
-  var p=G.players[0],card=p.hand[idx];
+  var mi=myPI();
+  if(G.playOrder[G.playPtr]!==mi)return;
+  var p=G.players[mi],card=p.hand[idx];
   if(!isLegal(card,p.hand,G.trump)){
-    setMsg('<strong style="color:#e05050">Ung\u00fcltig!</strong> Farbe bekennen oder Trumpf spielen.');
+    setMsg('<strong style="color:#e05050">Ungültig!</strong> Farbe bekennen oder Trumpf spielen.');
     return;
   }
-  // Find card element before removing
   var handEl=document.getElementById('hand-area');
   var cardWrap=handEl.querySelector('[data-idx="'+idx+'"]');
   p.hand.splice(idx,1);
-  G.trick.push({pidx:0,card:card});
-  G.selCards={};
-  addLog('Du spielst: '+cn(card));
-  G.playPtr++;
-  renderHand();
-  if(cardWrap){
-    flyCardToTable(card,cardWrap,function(){render();setTimeout(nextPlay,200);});
-  } else {
-    render();setTimeout(nextPlay,400);
-  }
+  G.trick.push({pidx:mi,card:card});
+  G.selCards={}; addLog((mi===0&&!MP.active?'Du':p.name)+' spielt: '+cn(card)); G.playPtr++;
+  syncState(); renderHand();
+  if(cardWrap){ flyCardToTable(card,cardWrap,function(){render();setTimeout(nextPlay,200);}); }
+  else { render(); setTimeout(nextPlay,400); }
 }
 
 function trickBest(){
-  var led=G.trick[0].card.suit,best=G.trick[0];
+  var led=G.trick[0].card.suit, best=G.trick[0];
   G.trick.forEach(function(e){if(beats(e.card,best.card,led,G.trump))best=e;});
   return best;
 }
 
 function cpuPlay(pi){
-  // Sicherheitscheck: falls Phase sich geändert hat, abbrechen
   if(G.phase!=='play')return;
   if(G.playOrder[G.playPtr]!==pi)return;
-
   var p=G.players[pi];
   var led=G.trick.length>0?G.trick[0].card.suit:-1;
   var legal=p.hand.filter(function(c){return isLegal(c,p.hand,G.trump);});
-  if(legal.length===0){legal=p.hand.slice();}  // Fallback: alle Karten
+  if(legal.length===0){legal=p.hand.slice();}
   var chosen;
   if(G.trick.length>0){
     var best=trickBest();
     var canWin=legal.filter(function(c){return beats(c,best.card,led,G.trump);});
     if(canWin.length>0&&((pi===G.chratzer&&p.tricks<2)||(p.status==='dabei'&&p.tricks<1))){
       canWin.sort(function(a,b){return b.rank-a.rank;});chosen=canWin[0];
-    } else {
-      legal.sort(function(a,b){return b.rank-a.rank;});chosen=legal[0];
-    }
+    } else { legal.sort(function(a,b){return b.rank-a.rank;});chosen=legal[0]; }
   } else {
     if(pi===G.chratzer){
       var nt=legal.filter(function(c){return c.suit!==G.trump;});
       var pool=nt.length?nt:legal;
       pool.sort(function(a,b){return a.rank-b.rank;});chosen=pool[0];
-    } else {
-      legal.sort(function(a,b){return b.rank-a.rank;});chosen=legal[0];
-    }
+    } else { legal.sort(function(a,b){return b.rank-a.rank;});chosen=legal[0]; }
   }
-  var hi=p.hand.indexOf(chosen);
-  p.hand.splice(hi,1);
-  G.trick.push({pidx:pi,card:chosen});
-  addLog(p.name+': '+cn(chosen));
-  G.playPtr++;
+  var hi=p.hand.indexOf(chosen); p.hand.splice(hi,1);
+  G.trick.push({pidx:pi,card:chosen}); addLog(p.name+': '+cn(chosen)); G.playPtr++;
 
-  // Kartensitz-Element finden für Fly-Animation
-  var seatEl = null;
-  var seats = document.querySelectorAll('.seat');
-  for (var si = 0; si < seats.length; si++) {
-    var lbl = seats[si].querySelector('.seat-label');
-    if (lbl && lbl.textContent.indexOf(p.name) !== -1) { seatEl = seats[si]; break; }
+  var seatEl=null;
+  var seats=document.querySelectorAll('.seat');
+  for(var si=0;si<seats.length;si++){
+    var lbl=seats[si].querySelector('.seat-label');
+    if(lbl&&lbl.textContent.indexOf(p.name)!==-1){seatEl=seats[si];break;}
   }
-  var fromEl = seatEl ? seatEl.querySelector('.seat-cards') : null;
-  if (fromEl && fromEl.firstChild) {
-    flyCardToTable(chosen, fromEl.firstChild, function(){ render(); setTimeout(nextPlay, 200); });
-  } else {
-    render();
-    setTimeout(nextPlay, 500);
-  }
+  var fromEl=seatEl?seatEl.querySelector('.seat-cards'):null;
+  if(fromEl&&fromEl.firstChild){
+    flyCardToTable(chosen,fromEl.firstChild,function(){syncState();render();setTimeout(nextPlay,200);});
+  } else { syncState();render();setTimeout(nextPlay,500); }
 }
 
 function resolveTrick(){
   var best=trickBest();
-  G.players[best.pidx].tricks++;
-  G.tricksTotal++;
-  addLog('\uD83C\uDFC6 Stich '+G.tricksTotal+' \u2192 '+G.players[best.pidx].name+' ('+cn(best.card)+')');
-  document.getElementById('trick-winner').textContent='\u2192 '+G.players[best.pidx].name+' gewinnt Stich '+G.tricksTotal+'!';
+  G.players[best.pidx].tricks++; G.tricksTotal++;
+  addLog('🏆 Stich '+G.tricksTotal+' → '+G.players[best.pidx].name+' ('+cn(best.card)+')');
+  document.getElementById('trick-winner').textContent='→ '+G.players[best.pidx].name+' gewinnt Stich '+G.tricksTotal+'!';
 
   var winner=best.pidx;
   var cardsLeft=G.players[winner].hand.length;
-  render();
+  var isLastTrick=(cardsLeft===0);
+  var winnerName=G.players[winner].name;
 
-  // Karten auf dem Tisch zeigen und auf Bestätigung warten
-  var winnerName = G.players[winner].name;
-  var isLastTrick = (cardsLeft === 0);
-  setMsg('<strong>' + winnerName + '</strong> gewinnt Stich ' + G.tricksTotal + '!' + (isLastTrick ? ' <em>Letzte Runde!</em>' : ''));
+  // State für alle sichtbar machen (inkl. Stich auf dem Tisch)
+  G.awaitingContinue=true; G.trickWinner=winner; G.isLastTrick=isLastTrick;
+  syncState(); render();
+
+  setMsg('<strong>'+winnerName+'</strong> gewinnt Stich '+G.tricksTotal+'!'+(isLastTrick?' <em>Letzte Runde!</em>':''));
+
+  function doContinue(){
+    if(!G.awaitingContinue)return;
+    G.awaitingContinue=false; G.trickWinner=-1;
+    MP.waitingForMove=null; // Continue-Listener löschen
+    var newOrder=[winner];
+    for(var ni=1;ni<N;ni++){var npi=(winner-ni+N*100)%N; if(G.players[npi].status!=='weg')newOrder.push(npi);}
+    G.playOrder=newOrder; G.playPtr=0; G.trick=[];
+    syncState(); render();
+    if(isLastTrick){ setTimeout(endRound,400); }
+    else { document.getElementById('trick-winner').textContent=''; setTimeout(nextPlay,200); }
+  }
+
   setBtns([{
-    label: isLastTrick ? '\uD83C\uDFC6 Rundenende' : '\u25B6 Weiter',
-    style: isLastTrick ? 'gold' : 'green',
-    fn: function(){
-      // Jetzt erst den Stich auflösen
-      // Gewinner führt den nächsten Stich an; weiter Gegenuhrzeigersinn
-      var newOrder=[winner];
-      for(var ni=1;ni<N;ni++){var npi=(winner-ni+N*100)%N;if(G.players[npi].status!=='weg')newOrder.push(npi);}
-      G.playOrder=newOrder;
-      G.playPtr=0;
-      G.trick=[];
-      render();
-      if(isLastTrick){
-        setTimeout(endRound, 400);
-      } else {
-        document.getElementById('trick-winner').textContent='';
-        setTimeout(nextPlay, 200);
-      }
-    }
+    label: isLastTrick?'🏆 Rundenende':'▶ Weiter',
+    style: isLastTrick?'gold':'green',
+    fn: doContinue
   }]);
+
+  // Host auch auf Remote-Continue hören (beliebiger Spieler kann klicken)
+  if(MP.active&&MP.isHost){
+    waitForRemote(function(move){ if(move.type==='continue') doContinue(); });
+  }
 }
 
 function endRound(){
@@ -994,78 +1388,72 @@ function endRound(){
   var lines=['<strong>'+chr.name+'</strong> sagt AUF!: '+chr.tricks+' Stich(e) | Pot: Fr. '+potStart.toFixed(2)+'.'];
   var anyPenalty=false;
 
-  // SCHRITT 1: Pot verteilen an Gewinner (Pot wird 0)
   if(chrWon){
-    var cs=+(potStart*2/3).toFixed(2);
-    var rest=+(potStart-cs).toFixed(2);
-    chr.balance+=cs;
-    lines.push('\u2705 '+chr.name+' gewinnt Fr. '+cs.toFixed(2)+' (2/3).');
+    var cs=+(potStart*2/3).toFixed(2); var rest=+(potStart-cs).toFixed(2);
+    chr.balance+=cs; lines.push('✅ '+chr.name+' gewinnt Fr. '+cs.toFixed(2)+' (2/3).');
     if(dG.length>0){
       var sh=+(rest/dG.length).toFixed(2);
       dG.forEach(function(p){p.balance+=sh;});
-      lines.push('\u2705 '+dG.map(function(p){return p.name;}).join(', ')+' teilen Fr. '+rest.toFixed(2)+' (1/3).');
+      lines.push('✅ '+dG.map(function(p){return p.name;}).join(', ')+' teilen Fr. '+rest.toFixed(2)+' (1/3).');
     }
   } else {
     if(dG.length>0){
       var sh2=+(potStart/dG.length).toFixed(2);
       dG.forEach(function(p){p.balance+=sh2;});
-      lines.push('\u2705 '+dG.map(function(p){return p.name;}).join(', ')+' teilen Fr. '+potStart.toFixed(2)+'.');
+      lines.push('✅ '+dG.map(function(p){return p.name;}).join(', ')+' teilen Fr. '+potStart.toFixed(2)+'.');
     }
   }
 
-  // SCHRITT 2: Pot = 0, dann Strafen einzahlen
   G.pot=0; G.potContrib={};
-
   if(chrWon){
     dV.forEach(function(p){
-      var idx=G.players.indexOf(p);
-      var pen=+potStart.toFixed(2);
+      var idx2=G.players.indexOf(p); var pen=+potStart.toFixed(2);
       p.balance-=pen; G.pot=+(G.pot+pen).toFixed(2);
-      G.potContrib[idx]=(G.potContrib[idx]||0)+pen;
-      lines.push('\u274C '+p.name+' zahlt Fr. '+pen.toFixed(2)+' (1\u00d7 Pot).');
-      anyPenalty=true;
+      G.potContrib[idx2]=(G.potContrib[idx2]||0)+pen;
+      lines.push('❌ '+p.name+' zahlt Fr. '+pen.toFixed(2)+' (1× Pot).'); anyPenalty=true;
     });
   } else {
-    var chrIdx=G.chratzer;
-    var pen2=+(potStart*2).toFixed(2);
+    var chrIdx=G.chratzer; var pen2=+(potStart*2).toFixed(2);
     chr.balance-=pen2; G.pot=+(G.pot+pen2).toFixed(2);
     G.potContrib[chrIdx]=(G.potContrib[chrIdx]||0)+pen2;
-    lines.push('\u274C '+chr.name+' zahlt Fr. '+pen2.toFixed(2)+' (2\u00d7 Pot).');
-    anyPenalty=true;
+    lines.push('❌ '+chr.name+' zahlt Fr. '+pen2.toFixed(2)+' (2× Pot).'); anyPenalty=true;
     dV.forEach(function(p){
-      var idx=G.players.indexOf(p);
-      var pen3=+potStart.toFixed(2);
+      var idx3=G.players.indexOf(p); var pen3=+potStart.toFixed(2);
       p.balance-=pen3; G.pot=+(G.pot+pen3).toFixed(2);
-      G.potContrib[idx]=(G.potContrib[idx]||0)+pen3;
-      lines.push('\u274C '+p.name+' zahlt Fr. '+pen3.toFixed(2)+' (1\u00d7 Pot).');
-      anyPenalty=true;
+      G.potContrib[idx3]=(G.potContrib[idx3]||0)+pen3;
+      lines.push('❌ '+p.name+' zahlt Fr. '+pen3.toFixed(2)+' (1× Pot).'); anyPenalty=true;
     });
   }
 
   G.pot=+G.pot.toFixed(2);
   G.needsEinsatz=!anyPenalty;
   if(anyPenalty){
-    lines.push('<em style="color:#c9a84c">Neuer Pot: Fr. '+G.pot.toFixed(2)+' \u2013 kein Grundeinsatz n\u00e4chste Runde.</em>');
+    lines.push('<em style="color:#c9a84c">Neuer Pot: Fr. '+G.pot.toFixed(2)+' – kein Grundeinsatz nächste Runde.</em>');
   } else {
     G.potContrib={};
-    lines.push('<em style="color:#c9a84c">Pot leer \u2013 Grundeinsatz n\u00e4chste Runde.</em>');
+    lines.push('<em style="color:#c9a84c">Pot leer – Grundeinsatz nächste Runde.</em>');
   }
 
   G.geber=(G.geber-1+N)%N;
-  render();
-  showModal('Rundenende',lines.join('<br>'),[
-    {label:'\uD83C\uDCF4 N\u00e4chste Runde',style:'gold',fn:startRound},
-    {label:'\u2699 Neu einrichten',style:'gray',fn:function(){showSetupDialog(startGame);}},
-    {label:'\u23F9 Beenden',style:'red',fn:function(){
+  syncState(); render();
+
+  var nextRoundBtns=[
+    {label:'🃏 Nächste Runde',style:'gold',fn:startRound},
+    {label:'⏹ Beenden',style:'red',fn:function(){
       setMsg('Spiel beendet.');
-      setBtns([{label:'\uD83D\uDD04 Neu starten',style:'gold',fn:function(){showSetupDialog(startGame);}}]);
+      setBtns([{label:'🔄 Neu starten',style:'gold',fn:function(){
+        if(MP.active){ startGameMP(); } else { showSetupDialog(startGame); }
+      }}]);
     }}
-  ]);
+  ];
+  if(!MP.active) nextRoundBtns.splice(1,0,{label:'⚙ Neu einrichten',style:'gray',fn:function(){showSetupDialog(startGame);}});
+
+  showModal('Rundenende',lines.join('<br>'),nextRoundBtns);
 }
 
-// Boot
-showSetupDialog(startGame);
-
+// ── Boot ──────────────────────────────────────────────────
+// Lobby-Overlay ist bereits sichtbar (display:flex im HTML)
+// startGame / startGameMP werden aus der Lobby heraus aufgerufen
 </script>
 </body>
 </html>
