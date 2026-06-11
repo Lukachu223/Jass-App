@@ -333,14 +333,25 @@ function myPI(){ return MP.active ? MP.myIndex : 0; }
 // ── Firebase / Lobby ──────────────────────────────────────────
 
 function fbReady(){
-  if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey==='DEIN_API_KEY'){
-    lerr('c','Firebase nicht konfiguriert – bitte FIREBASE_CONFIG in index.html ausfüllen.');
-    lerr('j','Firebase nicht konfiguriert – bitte FIREBASE_CONFIG in index.html ausfüllen.');
+  try {
+    if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey==='DEIN_API_KEY'){
+      lerr('c','Firebase nicht konfiguriert.');
+      lerr('j','Firebase nicht konfiguriert.');
+      return false;
+    }
+    if(typeof firebase === 'undefined'){
+      lerr('c','Firebase SDK nicht geladen. Bitte Seite neu laden.');
+      lerr('j','Firebase SDK nicht geladen. Bitte Seite neu laden.');
+      return false;
+    }
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    MP.db = firebase.database();
+    return true;
+  } catch(e) {
+    lerr('c','Firebase Fehler: '+e.message);
+    lerr('j','Firebase Fehler: '+e.message);
     return false;
   }
-  if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-  MP.db = firebase.database();
-  return true;
 }
 
 function genCode(){
@@ -497,7 +508,13 @@ function lobbyAddCPU(){
 
 function syncState(){
   if(!MP.active || !MP.isHost || !MP.stateRef) return;
-  try { MP.stateRef.set(JSON.parse(JSON.stringify(G))); } catch(e){}
+  try {
+    // Sicherstellen dass alle Werte Firebase-kompatibel sind (keine undefined)
+    var toSync=JSON.parse(JSON.stringify(G, function(key, val){
+      return val===undefined ? null : val;
+    }));
+    MP.stateRef.set(toSync);
+  } catch(e){ console.error('syncState error:', e); }
 }
 
 function listenGameState(){
@@ -513,19 +530,28 @@ function listenGameState(){
     var state=snap.val(); if(!state) return;
     var localSel=G.selCards||{};
     G=state;
-    // Arrays die Firebase als Objekte speichert wiederherstellen
+    // Firebase speichert Arrays als Objekte – korrekt nach Index sortiert wiederherstellen
+    function fbArr(obj){ if(!obj) return []; if(Array.isArray(obj)) return obj; return Object.keys(obj).sort(function(a,b){return Number(a)-Number(b);}).map(function(k){return obj[k];}); }
     if(!G.players) G.players=[];
-    G.players=Object.values(G.players||{});
-    G.players.forEach(function(p){ p.hand=p.hand?Object.values(p.hand):[]; });
-    G.trick     = G.trick     ? Object.values(G.trick)     : [];
-    G.stock     = G.stock     ? Object.values(G.stock)     : [];
-    G.ansageOrder=G.ansageOrder?Object.values(G.ansageOrder):[];
-    G.playOrder =G.playOrder  ?Object.values(G.playOrder)  :[];
-    G.swapOrder =G.swapOrder  ?Object.values(G.swapOrder)  :[];
-    G.potContrib=G.potContrib ||{};
-    G.selCards  ={};
-    // Lokale Kartenauswahl erhalten falls mein Tausch-Zug
+    G.players=fbArr(G.players);
+    G.players.forEach(function(p){
+      p.hand=fbArr(p.hand);
+      // Karten-Objekte korrekt wiederherstellen
+      p.hand=p.hand.map(function(c){ return c&&typeof c==='object'?{suit:Number(c.suit),rank:Number(c.rank)}:c; });
+    });
+    G.trick=fbArr(G.trick).map(function(e){
+      if(!e) return e;
+      return {pidx:Number(e.pidx), card:{suit:Number(e.card.suit),rank:Number(e.card.rank)}};
+    });
+    G.stock=fbArr(G.stock).map(function(c){ return c?{suit:Number(c.suit),rank:Number(c.rank)}:c; });
+    G.ansageOrder=fbArr(G.ansageOrder).map(Number);
+    G.playOrder  =fbArr(G.playOrder).map(Number);
+    G.swapOrder  =fbArr(G.swapOrder).map(Number);
+    G.potContrib =G.potContrib||{};
+    G.selCards   ={};
     if(G.phase==='tausch' && G.swapOrder[G.swapPtr]===MP.myIndex) G.selCards=localSel;
+    // N aktualisieren
+    N=G.players.length;
     render();
     checkMyTurnRemote();
   });
