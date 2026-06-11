@@ -136,6 +136,145 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
 .lobby-settings input{width:72px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,0.06);color:var(--text);font-family:inherit;text-align:center;outline:none;}
 .lobby-hint{font-size:0.68rem;color:var(--text-d);text-align:center;margin-top:10px;line-height:1.7;}
 .lobby-err{color:var(--red);font-size:0.75rem;text-align:center;margin-bottom:8px;min-height:18px;}
+
+/* ══════════════════════════════════════════════
+   MOBILE LAYOUT  (max-width: 600px)
+   Desktop bleibt vollständig unverändert.
+   ══════════════════════════════════════════════ */
+@media (max-width: 600px) {
+
+  /* ── Top Bar: kompakter ── */
+  #topbar { height:44px; padding:0 10px; }
+  .logo { font-size:1rem; }
+  #round-tag { font-size:0.58rem; }
+  .pot-val { font-size:1.05rem; }
+  #home-btn { padding:4px 9px; font-size:0.68rem; }
+
+  /* ── Scores Bar: scrollbar horizontal statt umbrechen ── */
+  #scores {
+    top:44px;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    justify-content:flex-start;
+    padding:3px 6px;
+    gap:4px;
+    scrollbar-width:none;
+  }
+  #scores::-webkit-scrollbar { display:none; }
+  .sc { min-width:62px; flex-shrink:0; padding:2px 7px; }
+  .sc-name { font-size:0.56rem; }
+  .sc-val { font-size:0.8rem; }
+  .sc-tricks { font-size:0.48rem; }
+
+  /* ── Info Panel: mobile als schmale horizontale Leiste oben nach Scores ── */
+  #info-panel {
+    position:fixed;
+    top:auto;
+    right:auto;
+    bottom:0;
+    left:0;
+    width:100%;
+    border-radius:0;
+    border:none;
+    border-top:1px solid var(--border);
+    flex-direction:row;
+    flex-wrap:wrap;
+    gap:6px 12px;
+    padding:5px 12px 6px;
+    font-size:0.6rem;
+    z-index:11;
+    background:var(--surface);
+    display:none; /* wird via JS gesteuert – standardmässig ausgeblendet */
+  }
+  #info-panel.mobile-visible {
+    display:flex;
+  }
+  .ip-section { flex-direction:row; align-items:center; gap:5px; }
+  .ip-label { font-size:0.48rem; white-space:nowrap; }
+  .ip-val { font-size:0.78rem; }
+  .ip-sub { font-size:0.55rem; }
+  .ip-divider { display:none; }
+  #ip-trump-card img, #ip-trump-card svg { width:24px !important; height:34px !important; }
+
+  /* ── Info-Toggle Button (nur mobile) ── */
+  #info-toggle-btn {
+    display:flex;
+    position:fixed;
+    bottom:130px;
+    right:8px;
+    z-index:12;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:4px 9px;
+    font-size:0.62rem;
+    color:var(--text-d);
+    cursor:pointer;
+    align-items:center;
+    gap:4px;
+    backdrop-filter:blur(4px);
+  }
+
+  /* ── Spieltisch Scene ── */
+  #scene {
+    top:80px;   /* topbar(44) + scores(~36) */
+    bottom:200px; /* Platz für Hand + Action */
+    overflow:hidden;
+  }
+  #table-wrap {
+    width:min(280px, 82vw);
+    height:min(280px, 82vw);
+  }
+
+  /* ── Seats: kleinere Karten + Labels ── */
+  .seat-label { font-size:0.55rem; padding:2px 6px; }
+  .seat-info { font-size:0.46rem; }
+
+  /* ── Hand Area: kleinere Karten, kein Überlappen ── */
+  #hand-area {
+    bottom:108px;  /* über action-bar */
+    height:92px;
+    gap:3px;
+    padding:0 6px;
+  }
+  .cw:hover { transform:translateY(-10px) scale(1.03); }
+  .cw.sel  { transform:translateY(-14px) scale(1.05); }
+
+  /* ── Action Bar: kompakter, kein Überlapp ── */
+  #action-bar {
+    padding:5px 10px 6px;
+    gap:4px;
+    bottom:0;
+  }
+  #action-msg { font-size:0.75rem; padding:3px 10px; }
+  .btn { font-size:0.75rem; padding:6px 13px; }
+
+  /* ── Log: kleiner, oben-links, nicht über Hand ── */
+  #log {
+    bottom:auto;
+    top:82px;
+    left:4px;
+    width:160px;
+    max-height:46px;
+    font-size:0.55rem;
+    padding:3px 7px;
+    opacity:0.75;
+  }
+
+  /* ── Stock Info: verstecken auf mobile (ist im info-panel) ── */
+  #stock-info { display:none; }
+
+  /* ── Lobby: volle Breite ── */
+  #lobby-box { padding:22px 16px; border-radius:14px; width:97%; }
+  #lobby-box h1 { font-size:1.3rem; }
+  .lobby-code-big { font-size:2.2rem; letter-spacing:10px; padding:10px; }
+
+  /* ── Modal: sicher im viewport ── */
+  #modal { padding:20px 16px; border-radius:12px; max-width:96vw; }
+  #modal h2 { font-size:1.1rem; }
+  #modal p { font-size:0.8rem; }
+}
 </style>
 </head>
 <body>
@@ -174,6 +313,7 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
   </div>
 </div>
 
+<div id="info-toggle-btn" style="display:none" onclick="toggleInfoPanel()">ℹ️ Info</div>
 <div id="hand-area"></div>
 <div id="card-flyer"></div>
 <div id="action-bar"><div id="action-msg">Bereit.</div><div id="btns"></div></div>
@@ -1668,6 +1808,46 @@ function listenDisconnects(){
 
 // ── Zeige Home-Button sobald Spiel läuft ─────────────────
 function showHomeBtn(){ document.getElementById('home-btn').style.display=''; }
+
+// ── Mobile: Info-Panel Toggle ─────────────────────────────
+(function(){
+  var isMobile = window.matchMedia('(max-width:600px)').matches;
+  if(isMobile){
+    var toggleBtn = document.getElementById('info-toggle-btn');
+    if(toggleBtn) toggleBtn.style.display='flex';
+  }
+  window.addEventListener('resize',function(){
+    var m = window.matchMedia('(max-width:600px)').matches;
+    var btn = document.getElementById('info-toggle-btn');
+    var panel = document.getElementById('info-panel');
+    if(btn) btn.style.display = m ? 'flex' : 'none';
+    if(!m && panel){
+      // Desktop: immer sichtbar, ohne mobile-visible class
+      panel.classList.remove('mobile-visible');
+    }
+  });
+})();
+
+function toggleInfoPanel(){
+  var panel = document.getElementById('info-panel');
+  if(panel) panel.classList.toggle('mobile-visible');
+}
+
+// ── Mobile: Karten-Größe anpassen ────────────────────────
+(function(){
+  function applyMobileCardSizes(){
+    if(window.matchMedia('(max-width:600px)').matches){
+      CW=52; CH=75; CWS=28; CHS=40; CS=28; HS=40; CT=40; HT=58;
+    } else {
+      CW=72; CH=104; CWS=38; CHS=55; CS=38; HS=55; CT=54; HT=78;
+    }
+  }
+  applyMobileCardSizes();
+  window.addEventListener('resize', function(){
+    applyMobileCardSizes();
+    if(G && G.phase && G.phase !== 'start') render();
+  });
+})();
 
 // ── Boot ──────────────────────────────────────────────────
 // Lobby-Overlay ist bereits sichtbar (display:flex im HTML)
