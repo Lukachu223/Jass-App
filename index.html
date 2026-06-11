@@ -455,20 +455,7 @@ function listenLobbyPlayers(){
   });
 }
 
-function lobbyAddCPU(){
-  if(!MP.isHost||!MP.roomRef) return;
-  MP.roomRef.child('players').once('value',function(snap){
-    var players=snap.val()||{};
-    var taken=Object.keys(players).map(Number);
-    if(taken.length>=6){alert('Maximal 6 Spieler.');return;}
-    var next=1; while(taken.indexOf(next)!==-1) next++;
-    var cpuNames=['CPU Heidi','CPU Hans','CPU Vreni','CPU Ruedi','CPU Berta'];
-    var cpuName=cpuNames[(next-1)%cpuNames.length];
-    MP.roomRef.child('players/'+next).set({name:cpuName,index:next,isCPU:true});
-  });
-}
-
-
+function lobbyStartGame(){
   if(!MP.isHost) return;
   var ei=parseFloat(document.getElementById('l-einsatz').value)||0.20;
   EINSATZ=Math.max(0.05,Math.min(10,Math.round(ei/0.05)*0.05));
@@ -484,7 +471,6 @@ function lobbyAddCPU(){
     N=MP.playerNames.length;
     for(var i=0;i<N;i++) if(!MP.playerNames[i]) MP.playerNames[i]='Spieler '+(i+1);
 
-    // Einsatz und Spieler an alle kommunizieren
     MP.roomRef.child('settings').set({ einsatz:EINSATZ, playerNames:MP.playerNames, cpuFlags:MP.cpuFlags||[] });
     MP.roomRef.child('started').set(true);
     document.getElementById('lobby-overlay').style.display='none';
@@ -492,6 +478,20 @@ function lobbyAddCPU(){
     startGameMP();
   });
 }
+
+function lobbyAddCPU(){
+  if(!MP.isHost||!MP.roomRef) return;
+  MP.roomRef.child('players').once('value',function(snap){
+    var players=snap.val()||{};
+    var taken=Object.keys(players).map(Number);
+    if(taken.length>=6){alert('Maximal 6 Spieler.');return;}
+    var next=1; while(taken.indexOf(next)!==-1) next++;
+    var cpuNames=['CPU Heidi','CPU Hans','CPU Vreni','CPU Ruedi','CPU Berta'];
+    var cpuName=cpuNames[(next-1)%cpuNames.length];
+    MP.roomRef.child('players/'+next).set({name:cpuName,index:next,isCPU:true});
+  });
+}
+
 
 // ── Firebase State Sync ──────────────────────────────────────
 
