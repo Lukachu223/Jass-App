@@ -241,6 +241,18 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
   }
   #info-toggle-btn.active { color:var(--gold-l); border-color:var(--gold); }
 
+  /* ── Hölzerner Hintergrund ── */
+  body {
+    background:
+      repeating-linear-gradient(90deg,
+        rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 2px,
+        transparent 2px, transparent 38px),
+      repeating-linear-gradient(0deg,
+        rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px,
+        transparent 1px, transparent 5px),
+      linear-gradient(100deg, #8a5a32, #a06f42 35%, #8a5a32 65%, #75491f);
+  }
+
   /* ── Spieltisch Scene ── */
   #scene {
     bottom:196px; /* Platz für Hand + Action */
@@ -248,13 +260,26 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
     transition:top 0.2s;
   }
   #table-wrap {
-    width:min(340px, 92vw);
-    height:min(340px, 92vw);
+    width:min(360px, 94vw);
+    height:min(360px, 94vw);
+  }
+  /* Eckiger Tisch statt rund: Quadrat (3/4 Spieler) oder Hexagon (5/6 Spieler) */
+  #table-circle {
+    border-radius:8px;
+    box-shadow:0 0 0 3px #1a3828, 0 0 0 7px #081510, 0 18px 50px rgba(0,0,0,0.6);
+  }
+  #table-circle.shape-square { border-radius:8px; clip-path:none; }
+  #table-circle.shape-hex {
+    border-radius:0;
+    border:none;
+    box-shadow:inset 0 0 0 7px #081510, inset 0 0 0 10px #1a3828;
+    filter:drop-shadow(0 18px 40px rgba(0,0,0,0.6));
+    clip-path:polygon(75% 100%, 25% 100%, 0% 50%, 25% 0%, 75% 0%, 100% 50%);
   }
   #trick-area { width:230px; gap:6px; }
 
-  /* ── Seats: kleinere Labels, gefächerte Karten ── */
-  .seat-label { font-size:0.55rem; padding:2px 6px; }
+  /* ── Seats: an den Tischkanten, Karten knapp am Bildschirmrand ── */
+  .seat-label { font-size:0.55rem; padding:2px 6px; white-space:nowrap; }
   .seat-info { font-size:0.46rem; }
   .seat-cards {
     /* Karten werden gefächert (überlappend) statt nebeneinander angezeigt – siehe JS */
@@ -971,6 +996,20 @@ var SEAT_POSITIONS = {
   6: [ null, { x:12, y:68 }, { x:12, y:28 }, { x:50, y:8  }, { x:88, y:28 }, { x:88, y:68 } ]
 };
 
+// ── Mobile: eckiger Tisch – Spieler entlang den Tischkanten ──
+// "Ich" sitze immer an der unteren Kante (Hand-Area). Die übrigen
+// Spieler werden im Anzeige-Index 1..N-1 den restlichen Kanten zugeordnet.
+// Quadrat (3/4 Spieler): links / oben / rechts – bei 3 bleibt "oben" frei.
+// Hexagon (5/6 Spieler, flache Kante unten = ich): die 5 übrigen Kanten,
+// bei 5 Spielern bleibt die obere (gegenüberliegende) Kante frei.
+var MOBILE_EDGES = {
+  3: [ {x:1,  y:50, rot:-90}, {x:99, y:50, rot:90} ],
+  4: [ {x:1,  y:50, rot:-90}, {x:50, y:1,  rot:0 }, {x:99, y:50, rot:90} ],
+  5: [ {x:7,  y:78, rot:-90}, {x:7,  y:22, rot:-90}, {x:93, y:22, rot:90}, {x:93, y:78, rot:90} ],
+  6: [ {x:7,  y:78, rot:-90}, {x:7,  y:22, rot:-90}, {x:50, y:2,  rot:0 }, {x:93, y:22, rot:90}, {x:93, y:78, rot:90} ]
+};
+var MOBILE_TABLE_SHAPE = { 3:'shape-square', 4:'shape-square', 5:'shape-hex', 6:'shape-hex' };
+
 function seatPos(playerIdx){
   var mi=myPI();
   // Anzeige-Index: 0=ich (hand-area), 1..N-1=andere um den Tisch
@@ -982,6 +1021,13 @@ function seatPos(playerIdx){
   var angle=(200+t*140)%360;
   var rad=angle*Math.PI/180;
   return {x:50+44*Math.cos(rad),y:50+44*Math.sin(rad)};
+}
+
+function mobileEdgePos(playerIdx){
+  var mi=myPI();
+  var displayIdx=(playerIdx-mi+N)%N; // 1..N-1
+  var edges=MOBILE_EDGES[N]||MOBILE_EDGES[6];
+  return edges[displayIdx-1]||edges[edges.length-1];
 }
 
 function render(){
@@ -1006,10 +1052,18 @@ function render(){
 
   var mi=myPI();
   var isMobileView = window.matchMedia('(max-width:600px)').matches;
+
+  // Eckiger Tisch (Quadrat/Hexagon) je nach Spieleranzahl, nur Mobile
+  circle.classList.remove('shape-square','shape-hex');
+  if(isMobileView){
+    var shapeCls=MOBILE_TABLE_SHAPE[N]||'shape-square';
+    circle.classList.add(shapeCls);
+  }
+
   for(var pi=0;pi<N;pi++){
     if(pi===mi) continue;
     var p=G.players[pi]; if(!p) continue;
-    var pos=seatPos(pi);
+    var pos=isMobileView?mobileEdgePos(pi):seatPos(pi);
     var isAct=(G.phase==='ansage'&&G.ansageOrder[G.ansagePtr]===pi)
       ||(G.phase==='metcho'&&G.ansageOrder[G.ansagePtr]===pi)
       ||(G.phase==='tausch'&&G.swapOrder[G.swapPtr]===pi)
@@ -1019,6 +1073,9 @@ function render(){
     var seat=document.createElement('div');
     seat.className='seat'+(p.status==='weg'?' out':'')+(isAct?' active':'')+(isBlindAuf?' blind-auf':'');
     seat.style.left=pos.x+'%'; seat.style.top=pos.y+'%';
+    if(isMobileView && pos.rot){
+      seat.style.transform='translate(-50%,-50%) rotate('+pos.rot+'deg)';
+    }
 
     var lbl=document.createElement('div');
     lbl.className='seat-label'+(isAct?' active-lbl':'');
