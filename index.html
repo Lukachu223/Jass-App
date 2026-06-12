@@ -305,11 +305,11 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
   .fan-wrap {
     display:inline-block;
     transform-origin:bottom center;
-    margin-left:-30px;
+    margin-left:-14px;
   }
   .fan-wrap:first-child { margin-left:0; }
-  .fan-wrap:has(.sel), .fan-wrap:has(.cw:hover) { z-index:30; position:relative; }
-  .cw:hover { transform:translateY(-14px) scale(1.04); }
+  .fan-wrap:has(.sel) { z-index:30; position:relative; }
+  .cw:hover { transform:none; }
   .cw.sel  { transform:translateY(-20px) scale(1.06); }
 
   /* ── Action Bar: kompakter, kein Überlapp ── */
