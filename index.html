@@ -1091,7 +1091,7 @@ function renderHand(){
   var el=document.getElementById('hand-area'); el.innerHTML='';
   var isPlay=G.phase==='play'&&G.playOrder[G.playPtr]===mi;
   var isSwap=G.phase==='tausch'&&G.swapOrder[G.swapPtr]===mi;
-  var hideOwnHand = G.phase==='blindauf' && G.geber===mi;
+  var hideOwnHand = G.phase==='blindauf' && G.geber===mi && G.blindAufPlayer!==mi;
   var isMobileView = window.matchMedia('(max-width:600px)').matches;
   var n=p.hand.length;
   p.hand.forEach(function(card,idx){
