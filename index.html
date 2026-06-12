@@ -243,14 +243,15 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
 
   /* ── Spieltisch Scene ── */
   #scene {
-    bottom:200px; /* Platz für Hand + Action */
+    bottom:196px; /* Platz für Hand + Action */
     overflow:hidden;
     transition:top 0.2s;
   }
   #table-wrap {
-    width:min(280px, 82vw);
-    height:min(280px, 82vw);
+    width:min(340px, 92vw);
+    height:min(340px, 92vw);
   }
+  #trick-area { width:230px; gap:6px; }
 
   /* ── Seats: kleinere Labels, gefächerte Karten ── */
   .seat-label { font-size:0.55rem; padding:2px 6px; }
@@ -259,24 +260,32 @@ body { font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--bg); co
     /* Karten werden gefächert (überlappend) statt nebeneinander angezeigt – siehe JS */
     overflow:visible;
     justify-content:center;
-    min-height:42px;
+    min-height:48px;
   }
   .seat-cards .fan-card {
-    margin-left:-22px;
+    margin-left:-24px;
     transition:transform 0.2s;
   }
   .seat-cards .fan-card:first-child { margin-left:0; }
   .seat.blind-auf { filter:drop-shadow(0 0 10px var(--gold-l)); }
 
-  /* ── Hand Area: kleinere Karten, kein Überlappen ── */
+  /* ── Hand Area: grössere Karten, gefächert (überlappend) ── */
   #hand-area {
-    bottom:108px;  /* über action-bar */
-    height:92px;
-    gap:3px;
-    padding:0 6px;
+    bottom:104px;  /* über action-bar */
+    height:128px;
+    gap:0;
+    padding:0 4px;
+    align-items:flex-end;
   }
-  .cw:hover { transform:translateY(-10px) scale(1.03); }
-  .cw.sel  { transform:translateY(-14px) scale(1.05); }
+  .fan-wrap {
+    display:inline-block;
+    transform-origin:bottom center;
+    margin-left:-30px;
+  }
+  .fan-wrap:first-child { margin-left:0; }
+  .fan-wrap:has(.sel), .fan-wrap:has(.cw:hover) { z-index:30; position:relative; }
+  .cw:hover { transform:translateY(-14px) scale(1.04); }
+  .cw.sel  { transform:translateY(-20px) scale(1.06); }
 
   /* ── Action Bar: kompakter, kein Überlapp ── */
   #action-bar {
@@ -1082,10 +1091,27 @@ function renderHand(){
   var el=document.getElementById('hand-area'); el.innerHTML='';
   var isPlay=G.phase==='play'&&G.playOrder[G.playPtr]===mi;
   var isSwap=G.phase==='tausch'&&G.swapOrder[G.swapPtr]===mi;
+  var hideOwnHand = G.phase==='blindauf' && G.geber===mi;
+  var isMobileView = window.matchMedia('(max-width:600px)').matches;
+  var n=p.hand.length;
   p.hand.forEach(function(card,idx){
+    var fan=null, target=el;
+    if(isMobileView){
+      fan=document.createElement('div');
+      fan.className='fan-wrap';
+      var rotDeg=(idx-(n-1)/2)*6;
+      fan.style.transform='rotate('+rotDeg+'deg)';
+      el.appendChild(fan);
+      target=fan;
+    }
     var wrap=document.createElement('div');
     wrap.className='cw'+(G.selCards[idx]?' sel':'');
     wrap.setAttribute('data-idx',idx);
+    if(hideOwnHand){
+      wrap.appendChild(makeBack(CW,CH));
+      target.appendChild(wrap);
+      return;
+    }
     wrap.appendChild(makeCard(card.suit,card.rank,CW,CH));
     if(isPlay){
       if(!isLegal(card,p.hand,G.trump)) wrap.classList.add('bad');
@@ -1106,7 +1132,7 @@ function renderHand(){
     } else if(isSwap){
       (function(i){ wrap.onclick=function(){ toggleSel(i); }; })(idx);
     }
-    el.appendChild(wrap);
+    target.appendChild(wrap);
   });
 }
 
@@ -2103,7 +2129,7 @@ function toggleScores(){
 (function(){
   function applyMobileCardSizes(){
     if(window.matchMedia('(max-width:600px)').matches){
-      CW=52; CH=75; CWS=28; CHS=40; CS=28; HS=40; CT=40; HT=58;
+      CW=64; CH=92; CWS=34; CHS=49; CS=34; HS=49; CT=58; HT=84;
     } else {
       CW=72; CH=104; CWS=38; CHS=55; CS=38; HS=55; CT=54; HT=78;
     }
